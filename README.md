@@ -12,8 +12,9 @@ Claude Code is powerful, but complex projects need more than a single prompt. Yo
 - **Separation of concerns** — the code writer shouldn't review its own work
 - **Memory across sessions** — don't rediscover the same issues every time
 - **Human escalation** — agents should ask when stuck, not guess
+- **Project-aware agents** — not generic templates, but agents that know *your* codebase
 
-This skill sets up all of that in one command.
+This skill sets up all of that in one command. It studies your project first — directory layout, code patterns, test infrastructure, conventions — then creates agents tailored to your specific codebase. If you already have agents, it fuses them with ours instead of overwriting.
 
 ## How It Works
 
@@ -141,14 +142,27 @@ You can also trigger evolution manually: `"Evolve the agents"` or `"Bake in the 
 - **Genuine improvement** — the agent's actual behavior changes, not just its reading list
 - **Compounding returns** — each session makes the next one faster and more reliable
 
+## Works With Existing Setups
+
+The skill detects what's already in your `.claude/` directory and adapts:
+
+| Scenario | What Happens |
+|----------|-------------|
+| **Fresh project** | Studies your codebase, creates agents customized to your stack, patterns, and conventions |
+| **Our harness already installed** | Upgrades core instructions to latest, preserves all accumulated knowledge and rules |
+| **Different agents exist** | Fuses your existing agents with ours — keeps your project knowledge, adds our structured workflow and self-improvement system |
+| **External orchestration** | Asks before touching anything |
+
+When fusing, the skill reads both your agent and our template, identifies what each brings (your project knowledge vs our build loop structure), and creates a unified agent that's better than either alone. Custom agents (deployer, domain experts, etc.) are never touched — they get registered with the orchestrator so it can dispatch to them.
+
 ## Key Design Decisions
 
-- **Idempotent scaffolding** — Re-running preserves existing learnings, gaps, and progress
+- **Project-aware from day 1** — Agents are customized to your codebase, not generic templates
+- **Fusion over replacement** — Existing agents get merged, not overwritten
 - **Two-tier self-improvement** — Learnings captured raw, then baked into agent DNA when validated
 - **Two-gate verification** — Spec compliance before code quality (don't optimize wrong code)
 - **Escalation over guessing** — 3 failures → ask the human with context and options
 - **Research-first** — Dedicated research step prevents building on assumptions
-- **Project-adaptive** — Detects your stack and customizes agent behavior
 
 ## Contributing
 

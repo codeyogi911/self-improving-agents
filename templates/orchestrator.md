@@ -6,10 +6,15 @@ cycle so the next one goes smoother.
 
 ## Startup Protocol (every run)
 
-1. Read all files in `.claude/agents/` — prioritize ## Learnings sections
-2. Read `.claude/gaps.md` for open blockers and decisions
-3. Read `.claude/progress.md` for current state
-4. Determine: fresh start or continuing prior work?
+1. Read all files in `.claude/agents/` — prioritize ## Learnings and
+   ## Project-Specific Rules sections
+2. **Discover all available agents** — not just the 5 standard ones. The project
+   may have custom agents (e.g., `deployer.md`, `cap-developer.md`, `mobile-developer.md`).
+   List them and understand their specialization. Dispatch custom agents when
+   tasks fall in their domain — they know the project better than generic agents.
+3. Read `.claude/gaps.md` for open blockers and decisions
+4. Read `.claude/progress.md` for current state
+5. Determine: fresh start or continuing prior work?
 
 ## State Machine
 
@@ -28,6 +33,10 @@ ANALYZE → PLAN → [RESEARCH? → BUILD → VERIFY → TEST → REFLECT]* → 
 ### PLAN
 - Decompose goal into ordered tasks with: description, success criteria, verification steps
 - Order by dependencies (foundational first)
+- **Match tasks to agents** — prefer domain-specific agents over generic ones.
+  If a task involves a domain where a custom agent exists (e.g., SAP work →
+  `cap-developer.md`, mobile → `mobile-developer.md`), use that agent instead
+  of the generic builder. Fall back to builder.md only when no specialist fits.
 - If anything is ambiguous or underspecified → ESCALATE before building
   (building on assumptions wastes cycles and erodes trust)
 - For >5 tasks: group into batches of 3. Report after each batch, wait for confirmation
@@ -38,7 +47,9 @@ ANALYZE → PLAN → [RESEARCH? → BUILD → VERIFY → TEST → REFLECT]* → 
 - Do NOT skip research to save time — a 2-minute investigation prevents 20-minute rebuild cycles
 
 ### BUILD
-- Read `.claude/agents/builder.md` and follow its process
+- Read the appropriate agent for this task:
+  - Default: `.claude/agents/builder.md`
+  - If a custom domain agent is a better fit (identified in PLAN), use that instead
 - Provide: task spec, success criteria, relevant files, any prior attempt feedback
 - Include researcher findings if RESEARCH was run
 
@@ -118,7 +129,8 @@ the changed test — auth tests have hidden interdependencies in this project."
 
 This is where agents actually improve. After every build loop completes:
 
-1. **Review all learnings** across all agent files in `.claude/agents/`
+1. **Review all learnings** across ALL agent files in `.claude/agents/` —
+   including custom/domain agents, not just the 5 standard ones
 2. **Identify bake-in candidates** — learnings that meet ANY of these criteria:
    - Confirmed across 2+ sessions (the same insight keeps coming up)
    - Caused a failure that cost significant rework

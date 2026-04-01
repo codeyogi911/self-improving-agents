@@ -12,7 +12,7 @@ description: >
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, WebSearch, WebFetch
 metadata:
   author: shashwatjain
-  version: '3.0'
+  version: '5.0'
 ---
 
 # Self-Improving Agents Harness
@@ -26,25 +26,100 @@ If empty, scaffold in generic mode and ask the user for their goal afterward.
 
 ---
 
-## Step 1: Analyze Target Project
+## Step 1: Deep Project Analysis
+
+Don't just detect the stack — understand the project. The agents you create
+should feel like they were written by someone who knows this codebase.
 
 1. Read `CLAUDE.md` if it exists — understand project conventions
-2. Detect stack by checking for: `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `Gemfile`, `pom.xml`, `Makefile`
-   - Identify: language, framework, test runner, package manager, linter/formatter
-3. Scan directory structure with `ls` and `Glob` to understand project layout
-4. Check `.claude/` directory for existing state:
-   - If agent files exist with `## Learnings` content → **extract and preserve all learnings**
-   - If `gaps.md` exists → **do NOT overwrite** (cross-session state)
-   - If `progress.md` exists → **do NOT overwrite** (cross-session state)
-5. Check for e2e test setup (Playwright, Cypress, Selenium, etc.)
+2. Detect stack by checking for: `package.json`, `pyproject.toml`, `Cargo.toml`,
+   `go.mod`, `Gemfile`, `pom.xml`, `Makefile`
+3. **Study the codebase** — this is what makes agents effective from day 1:
+   - Scan directory structure with `ls` and `Glob`
+   - Read 2-3 representative source files to understand code style, patterns,
+     naming conventions, and architecture
+   - Check test files: how are tests structured? What patterns do they follow?
+     What test utilities exist?
+   - Check for e2e test setup (Playwright, Cypress, Selenium, etc.)
+   - Look at recent git history: what kind of changes are typical?
+   - Note any CI/CD config (.github/workflows, .gitlab-ci.yml, etc.)
+4. **Build a project profile** — you'll use this to customize every agent:
+   - Language, framework, test runner, package manager, linter
+   - Directory conventions (where does new code go? where do tests live?)
+   - Key patterns (how are API routes defined? how is state managed? ORM?)
+   - E2E framework or "none"
+   - Common pitfalls visible from the code (e.g., complex build steps,
+     environment-dependent tests, monorepo structure)
+   - **Project type**: what kind of project is this? (see Agent Selection below)
 
-**Note your findings** (you'll use these to customize agent files in Step 3):
-- Language: __ | Framework: __ | Test runner: __ | Pkg manager: __
-- E2E framework: __ or "none" | Linter: __ or "none"
-- Existing learnings to preserve: yes/no
+### Agent Selection
 
-If you can't detect a value, leave it as "none" — the agent templates work
-without project-specific customization, it just makes them more effective.
+Not every project needs all 5 agents. Decide which agents to create based on
+what the project actually is:
+
+**Always create:**
+- **orchestrator** — every harness needs coordination
+- **builder** — every project has code to write
+- **verifier** — every project benefits from review
+
+**Create only if relevant:**
+- **e2e-tester** — only if the project has user-facing surfaces:
+  - YES: web apps, APIs with endpoints, mobile apps, desktop apps, CLIs with
+    interactive flows
+  - NO: libraries, skills/plugins, config-only repos, documentation, pure
+    data pipelines, markdown-only projects
+- **researcher** — only if the project involves external dependencies or
+  complex domains:
+  - YES: apps using external APIs, projects with multiple frameworks,
+    unfamiliar tech stacks, large codebases
+  - NO: small single-file utilities, projects where everything is self-contained
+
+**Consider creating project-specific agents** when the project has a clear
+specialized need that none of the standard agents cover. Examples:
+- **api-tester** for API-only projects (replaces e2e-tester with focused API
+  contract testing)
+- **migrator** for projects doing a major migration
+- **docs-reviewer** for documentation-heavy projects
+- **skill-evaluator** for Claude Code skill projects
+
+Use the templates as a starting point, but adapt the role and instructions to
+match the actual need. Give custom agents the same structure: Process section,
+Output format, `## Project-Specific Rules`, `## Learnings`.
+
+### Detect Existing Harness
+
+5. Scan `.claude/` directory thoroughly:
+   - `ls .claude/` and `ls .claude/agents/` if they exist
+   - Check for symlinks (`ls -la .claude/`) — some projects link to external
+     agent directories
+   - Read each existing agent file to understand its purpose, format, and
+     any knowledge it has accumulated
+
+6. Classify into one of these scenarios:
+
+   **A. Fresh project** — no `.claude/agents/` directory, or it exists but
+   is empty (settings files don't count)
+   → Full scaffolding with deep customization (Steps 2-5)
+
+   **B. Our harness already installed** — `.claude/agents/` has files matching
+   our structure (`## Project-Specific Rules`, `## Learnings` sections)
+   → **Upgrade**: preserve all accumulated knowledge, refresh core instructions
+
+   **C. Different agents exist** — `.claude/agents/` has agent files that
+   don't match our templates (different structure, YAML format, or different
+   names like `cap-developer.md`, `michael.md`)
+   → **Fuse**: merge the best of both (see Fusion Protocol below)
+
+   **D. External orchestration** — `.claude/` has symlinks to external agent
+   directories, OR `config.yaml`/`AGENTS.md` registries indicating a
+   higher-level orchestration system
+   → **ESCALATE** to user with what you found. Ask whether to add alongside
+   or skip.
+
+7. Check for existing state files:
+   - If `gaps.md` exists → **do NOT overwrite**
+   - If `progress.md` exists → **do NOT overwrite**
+   - If `run-journal.md` or similar tracking exists → note it, don't touch it
 
 ---
 
@@ -58,43 +133,107 @@ mkdir -p .claude/agents
 
 ## Step 3: Write Agent Files
 
-Read each template from the skill's `templates/` directory, customize for this
-project, and write to `.claude/agents/`.
+**Only create agents selected in Step 1.** The templates in `templates/` are
+starting points, not finished products. Read each relevant template, then
+customize it with real knowledge from the project analysis. If you decided to
+create a custom agent (api-tester, skill-evaluator, etc.), use the closest
+template as a base and adapt the role.
 
-The skill's templates directory is located at the same path as this SKILL.md
-file, under `templates/`. Read each template file listed below.
+The skill's templates directory is at the same path as this SKILL.md file,
+under `templates/`. Read each template file listed below.
 
-### For each agent file:
+### Scenario A — Fresh: Customize for This Project
 
-1. Read the template from `templates/{agent}.md`
-2. If an existing `.claude/agents/{agent}.md` has `## Learnings` content,
-   extract those entries — they represent hard-won knowledge from prior runs
-3. Write the template content to `.claude/agents/{agent}.md`
-4. If learnings were extracted in step 2, append them under `## Learnings`
+For each **selected** agent, read the template from `templates/{agent}.md`,
+then tailor it:
 
-### Agent files to create:
+**orchestrator.md** — Add to Startup Protocol:
+- The project's directory layout and where key code lives
+- Available test commands and how to run them
+- Any CI checks that must pass
 
-| Template | Target | Purpose |
-|----------|--------|---------|
-| `templates/orchestrator.md` | `.claude/agents/orchestrator.md` | Coordinates build loops, dispatches to other agents |
-| `templates/builder.md` | `.claude/agents/builder.md` | Writes code, runs tests, reports changes |
-| `templates/verifier.md` | `.claude/agents/verifier.md` | Two-gate review: spec compliance then code quality |
-| `templates/e2e-tester.md` | `.claude/agents/e2e-tester.md` | End-to-end testing, failure classification |
-| `templates/researcher.md` | `.claude/agents/researcher.md` | Pre-build investigation of APIs, patterns, docs |
+**builder.md** — Customize the Process section with project specifics:
+- Which test runner to use and the exact command (e.g., `pytest -xvs`, `npm test`)
+- Which linter to run and the exact command (e.g., `npx eslint .`, `ruff check`)
+- Where new code should go (directory conventions)
+- Patterns to follow (e.g., "API routes go in `src/routes/`, each with a
+  corresponding test in `tests/routes/`")
+- Any build steps required before testing
 
-### Project-specific customization
+**verifier.md** — Add project-relevant checks to Gate 2:
+- Framework-specific concerns (e.g., "check for N+1 queries in Django ORM",
+  "verify React hooks follow rules-of-hooks")
+- Security patterns specific to this stack
+- Test coverage expectations if the project has coverage tooling
 
-After writing each agent file, apply these customizations if the project
-analysis detected specific tools. Skip if values are "none".
+**e2e-tester.md** — Configure for the project's test infrastructure:
+- Which e2e framework is installed, where tests live, how to run them
+- Key user flows in this application
+- Test environment setup (dev server command, seed data)
 
-- In **builder.md**, under "Process" step 3, add a line like:
-  `This project uses Jest — run tests with \`npm test\` or \`npx jest\`.`
-  And under step 5: `Run ESLint: \`npx eslint .\` before reporting.`
-  (Replace with the actual detected tools and commands.)
+**researcher.md** — Add project context:
+- Key dependencies and where their docs live
+- Architecture decisions visible in the code
+- Where to look first for different types of questions
 
-- In **e2e-tester.md**, under "Detect existing infrastructure", add:
-  `This project has Playwright configured — check for existing tests in \`tests/\` or \`e2e/\`.`
-  (Replace with the actual detected framework and test directory.)
+### Scenario B — Upgrade: Refresh Core, Keep Knowledge
+
+For each of our 5 agents:
+1. Read the existing `.claude/agents/{agent}.md`
+2. Extract everything under `## Project-Specific Rules` and `## Learnings`
+3. Also extract any project-specific customizations that were added to core
+   sections (test commands, directory conventions, framework checks, etc.)
+4. Read the latest template from `templates/{agent}.md`
+5. Write the new template, re-applying ALL extracted customizations, rules,
+   and learnings
+6. Do NOT touch custom agent files that aren't part of our standard 5
+
+### Scenario C — Fuse: Best of Both Worlds
+
+When the project has agents that overlap with ours, the goal is to create a
+unified agent that combines:
+- **Their project knowledge**: custom instructions, conventions, domain expertise,
+  accumulated learnings — things that took real sessions to figure out
+- **Our structured workflow**: the build loop, output formats, retry protocol,
+  two-gate verification, self-improvement system (learnings + bake-in)
+
+**Fusion process for each overlapping agent:**
+
+1. Read their existing agent file completely
+2. Read our template for the same role
+3. Identify what each brings:
+   - **Theirs**: project-specific instructions, custom checks, domain knowledge,
+     accumulated learnings, tool preferences, naming conventions
+   - **Ours**: structured output format, retry protocol, self-improvement
+     sections (Project-Specific Rules + Learnings), state machine integration
+4. Write a fused agent that:
+   - Keeps their core instructions and project knowledge as the foundation
+   - Adds our structured sections: Output format, On Retry (builder), Gates
+     (verifier), failure classification (e2e-tester)
+   - Adds `## Project-Specific Rules` and `## Learnings` sections for the
+     self-improvement system
+   - Integrates with the orchestrator's state machine (uses our status codes:
+     COMPLETE, NEEDS_CLARIFICATION, BLOCKED, APPROVED, CHANGES_REQUIRED, etc.)
+5. Tell the user what you fused and what each side contributed
+
+**For agents with no overlap** (custom agents like `deployer.md`, `michael.md`):
+- Don't touch them
+- Add `## Project-Specific Rules` and `## Learnings` sections to them so
+  they can participate in the self-improvement system
+- Register them in the orchestrator's Startup Protocol
+
+**For our agents with no collision** (e.g., project has no verifier):
+- Write our template with full customization (same as Scenario A)
+
+### Agent templates:
+
+| Template | When to create | Purpose |
+|----------|---------------|---------|
+| `templates/orchestrator.md` | Always | Coordinates build loops, dispatches to other agents |
+| `templates/builder.md` | Always | Writes code, runs tests, reports changes |
+| `templates/verifier.md` | Always | Two-gate review: spec compliance then code quality |
+| `templates/e2e-tester.md` | If project has user-facing surfaces | End-to-end testing, failure classification |
+| `templates/researcher.md` | If complex deps or large codebase | Pre-build investigation of APIs, patterns, docs |
 
 ---
 
@@ -120,11 +259,13 @@ Append the following section to CLAUDE.md. Create the file if it doesn't exist.
 **If a "Self-Improving Agent Harness" section already exists, update it rather
 than duplicating it.**
 
+Adapt the template below — list only the agents you actually created:
+
 ```markdown
 
 ## Self-Improving Agent Harness
 
-Agents in `.claude/agents/`: orchestrator, builder, verifier, e2e-tester, researcher.
+Agents in `.claude/agents/`: [list the agents you created].
 State files: `.claude/gaps.md` (blockers/decisions), `.claude/progress.md` (task tracking).
 
 ### Usage
@@ -147,11 +288,14 @@ State files: `.claude/gaps.md` (blockers/decisions), `.claude/progress.md` (task
 
 ## Step 6: Report to User
 
-1. List every file created or updated with a one-line description
-2. Show usage examples:
+1. List every file created, updated, fused, or skipped — with one-line explanation
+2. For fused agents: explain what each side contributed
+3. Highlight project-specific customizations applied (test commands, directory
+   conventions, framework checks)
+4. Show usage examples:
    - `Use the orchestrator to build [goal]`
    - `Use the orchestrator to continue`
    - `Evolve the agents` (bake validated learnings into agent instructions)
    - `Read .claude/gaps.md`
-3. If $ARGUMENTS was provided: "Ready to start the first build loop with goal: **$ARGUMENTS**?"
-4. If $ARGUMENTS was empty: "What would you like the agents to build?"
+5. If $ARGUMENTS was provided: "Ready to start the first build loop with goal: **$ARGUMENTS**?"
+6. If $ARGUMENTS was empty: "What would you like the agents to build?"
