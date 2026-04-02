@@ -1,0 +1,9 @@
+we need to update the repo description too
+
+---
+
+this is old, align it with readme
+
+---
+
+also dont advertise entire cli everywhere
