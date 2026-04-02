@@ -39,7 +39,7 @@
     {
       "id": 8,
       "prompt": "/reflect — Entire is installed but not configured in this repo",
-      "expected_output": "Checks for Entire CLI (found). Runs entire status, detects repo is not configured. Runs entire enable to set up session capture. Reports that Entire is now set up and asks user to run some sessions first. Stops without attempting analysis."
+      "expected_output": "Checks for Entire CLI (found). Runs entire status, detects repo is not configured (not enabled or error). Runs entire enable to set up session capture. Reports that Entire is now set up and asks user to run some sessions first. Stops without attempting analysis."
     },
     {
       "id": 9,
@@ -59,12 +59,12 @@
     {
       "id": 12,
       "prompt": "/reflect status",
-      "expected_output": "Counts artifacts in .reflect/ subdirectories. Reads all insights and calculates freshness. Presents dashboard: artifact counts, freshness distribution (fresh/aging/stale), action items (unbaked HIGHs, promotion candidates, archival candidates), context.md last updated date."
+      "expected_output": "Counts artifacts in .reflect/ subdirectories (sessions, decisions, insights). Presents simple summary: artifact counts, unbaked HIGH insights count, context.md last updated date or 'not yet generated'."
     },
     {
       "id": 13,
       "prompt": "/reflect search database",
-      "expected_output": "Parses 'search database' from arguments. Greps across all .reflect/ markdown files for 'database'. Reads matched files and assesses relevance. Groups results by type (sessions, decisions, insights, file maps). Presents top 10 most relevant results with brief excerpts."
+      "expected_output": "Parses 'search database' from arguments. Greps across .reflect/sessions/, .reflect/decisions/, and .reflect/insights/ for 'database'. Reads matched files and assesses relevance. Presents top 10 most relevant results with type labels and brief excerpts."
     }
   ]
 }
