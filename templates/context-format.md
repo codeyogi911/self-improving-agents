@@ -1,7 +1,9 @@
 # Dynamic Context Format Template
 
-Use this format when generating `.reflect/context.md` — the living context file
-that gets injected into every AI session via `@.reflect/context.md` in CLAUDE.md.
+Use this format when generating `.reflect/context.md` — a compiled briefing of
+current project context, optionally referenced from CLAUDE.md via
+`@.reflect/context.md`. This is a generated overlay that supplements the
+human-owned CLAUDE.md, never replaces it.
 
 ---
 

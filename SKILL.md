@@ -1,15 +1,15 @@
 ---
 name: reflect
 description: >
-  The opinionated interpretation layer for your repo. Entire CLI is the durable
-  write-path and checkpoint substrate; /reflect reads from that substrate to
-  extract decisions, failures, and working context from session transcripts.
-  Stores interpretations in a structured knowledge base (.reflect/) and generates
-  context overlays that make every future session smarter. Commands: /reflect
-  (analyze sessions), /reflect why <file> (decision trail), /reflect what-failed
-  <topic> (failure patterns), /reflect context (regenerate context overlay),
-  /reflect status (knowledge dashboard). Also trigger on "reflect", "session
-  analysis", "what went wrong", "what can I improve", "why did we", "what failed".
+  The repo oracle that answers "why," backed by Entire session evidence. Entire
+  CLI is the durable write-path and checkpoint substrate; /reflect reads from
+  that substrate to extract decisions, failures, and working context. Stores
+  interpretations as structured evidence (.reflect/) and compiles context
+  briefings for future sessions. Core commands: /reflect (analyze sessions),
+  /reflect why <file> (decision trail with receipts), /reflect context
+  (compile context briefing). Also: /reflect what-failed <topic>,
+  /reflect status, /reflect search. Trigger on "reflect", "session analysis",
+  "what went wrong", "what can I improve", "why did we", "what failed".
 allowed-tools: Read, Edit, Bash, Glob, Grep
 metadata:
   author: shashwatjain
@@ -18,11 +18,11 @@ metadata:
 
 # Reflect — Opinionated Interpretation Layer
 
-You are the interpretation layer for a repository. Entire CLI is the durable
-write-path — it captures and checkpoints sessions. You read from that substrate
-to extract decisions, failures, and working context, storing interpretations in
-a structured knowledge base (`.reflect/`) and generating context overlays that
-evolve with every session.
+You are the repo oracle. Entire CLI is the durable write-path — it captures and
+checkpoints sessions. You read from that evidence substrate to answer "why":
+why was this decision made, what failed before, what does the AI need to know.
+You store interpretations as structured evidence (`.reflect/`) and compile
+context briefings that supplement (never replace) the project's CLAUDE.md.
 
 Parse $ARGUMENTS to determine which command to run:
 
@@ -217,11 +217,13 @@ Read the relevant format templates from the `templates/` directory.
 1. Read `templates/insight-format.md` for the format.
 2. Write or update the insight in `.reflect/insights/<slug>.md`.
 
-**For files with meaningful context captured:**
+**For files with meaningful context captured** (best-effort cache, not canonical):
 1. Read `templates/file-knowledge-format.md` for the format.
 2. Write or update the file knowledge map in `.reflect/files/`.
    - Encode path: replace `/` with `--`, append `.md`.
    - If the file map exists, merge new facts (don't duplicate).
+   - File maps are a convenience index rebuilt from session data — decisions
+     and insights are the durable primitives.
 
 **Update the index:**
 - Update `.reflect/index.md` with new sessions, decisions, and insights.
@@ -370,8 +372,9 @@ Shows failure patterns related to a topic, with evidence and recurrence data.
 
 **Usage**: `/reflect context`
 
-Regenerates `.reflect/context.md` — the dynamic context file that gets injected
-into AI sessions via `@.reflect/context.md` in CLAUDE.md.
+Regenerates `.reflect/context.md` — a compiled briefing of the most relevant
+current context from the evidence store, optionally referenced from CLAUDE.md
+via `@.reflect/context.md`. This is a generated overlay, not a source of truth.
 
 ### Steps:
 
@@ -417,16 +420,18 @@ into AI sessions via `@.reflect/context.md` in CLAUDE.md.
 8. Write to `.reflect/context.md`.
 
 9. If `@.reflect/context.md` is NOT already in `CLAUDE.md`, tell the user:
-   > "Tip: Add `@.reflect/context.md` to your CLAUDE.md to automatically
-   > inject dynamic knowledge into every session."
+   > "Tip: You can add `@.reflect/context.md` to your CLAUDE.md to include
+   > this briefing as supplementary context. Your CLAUDE.md rules always
+   > take precedence — context.md only adds evidence-backed context."
 
 ---
 
-## Command: Status
+## Command: Status (lightweight)
 
 **Usage**: `/reflect status`
 
-Shows a dashboard of the knowledge store.
+Quick summary of the evidence store. Keep this simple — just counts and
+actionable items, not a full dashboard.
 
 ### Steps:
 
@@ -435,52 +440,30 @@ Shows a dashboard of the knowledge store.
    ls .reflect/sessions/*.md 2>/dev/null | wc -l
    ls .reflect/decisions/*.md 2>/dev/null | wc -l
    ls .reflect/insights/*.md 2>/dev/null | wc -l
-   ls .reflect/files/*.md 2>/dev/null | wc -l
    ```
 
-2. Read all insights and calculate freshness for each.
-
-3. Present:
-   > **Knowledge Store Status**
-   >
-   > | Artifact | Count |
-   > |----------|-------|
-   > | Sessions | N |
-   > | Decisions | N |
-   > | Insights | N (H HIGH, M MEDIUM, L LOW) |
-   > | File Maps | N |
-   >
-   > **Freshness Distribution**
-   > - Fresh (>0.7): N insights
-   > - Aging (0.3-0.7): N insights
-   > - Stale (<0.3): N insights
-   >
-   > **Action Items**
-   > - N HIGH insights not yet baked
-   > - N MEDIUM insights seen 2+ times (promotion candidates)
-   > - N stale insights ready for archival
-   >
-   > **Context file**: `.reflect/context.md` last updated <date>
+2. Present:
+   > **Evidence Store**: N sessions, N decisions, N insights
+   > **Unbaked HIGH insights**: N
+   > **Context briefing**: last updated <date or "not yet generated">
 
 ---
 
-## Command: Search
+## Command: Search (lightweight)
 
 **Usage**: `/reflect search <query>`
 
-Searches across all knowledge artifacts for a query.
+Simple grep across the evidence store — not a semantic search engine.
 
 ### Steps:
 
 1. Extract the search query from $ARGUMENTS.
 
-2. Search across all `.reflect/` markdown files using Grep.
+2. Grep across `.reflect/sessions/`, `.reflect/decisions/`, and `.reflect/insights/`
+   for the query.
 
-3. Read matched files and assess relevance semantically.
-
-4. Group results by type (sessions, decisions, insights, file maps).
-
-5. Present the top 10 most relevant results with brief excerpts.
+3. Read matched files and present the top 10 most relevant results with type
+   labels and brief excerpts.
 
 ---
 

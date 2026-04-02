@@ -1,24 +1,24 @@
 # Reflect
 
-**The opinionated interpretation layer for AI coding agents.**
+**The repo oracle that answers "why," backed by Entire session evidence.**
 
-Your repo has amnesia. Git remembers *what* changed — nobody remembers *why*. Entire CLI captures and checkpoints your coding sessions. `/reflect` reads from that substrate to extract decisions, patterns, and insights — building an interpretive overlay that grows with every session and makes the next one smarter.
+Your repo has amnesia. Git remembers *what* changed — nobody remembers *why*. Entire CLI captures and checkpoints your coding sessions. `/reflect` is the oracle that reads from that evidence to answer questions: why was this decision made, what failed before, and what does the AI need to know right now.
 
 Works with **Claude Code** and **Cursor**. Requires [Entire CLI](https://entire.io) for session capture.
 
 ## How It Works
 
 ```
-Session → Entire CLI captures → /reflect analyzes → .reflect/ knowledge store → context.md → next session
+Session → Entire CLI captures → /reflect interprets → .reflect/ evidence store → context briefing → next session
 ```
 
-1. **Entire CLI** captures your coding sessions (Claude Code + Cursor)
-2. `/reflect` analyzes transcripts: extracts patterns, decisions, and insights
-3. Knowledge is stored in `.reflect/` — structured, git-friendly, human-readable
-4. A **living context file** (`.reflect/context.md`) is auto-generated with prioritized rules, decisions, and file notes
-5. Add `@.reflect/context.md` to your `CLAUDE.md` — every session starts with accumulated wisdom
+1. **Entire CLI** captures your coding sessions (Claude Code + Cursor) — this is the evidence substrate
+2. `/reflect` interprets transcripts: extracts decisions, patterns, and insights from that evidence
+3. Interpretations are stored in `.reflect/` — structured, git-friendly, human-readable
+4. A **compiled briefing** (`.reflect/context.md`) is generated with the most relevant current context
+5. Optionally reference `@.reflect/context.md` from your `CLAUDE.md` as supplementary context
 
-Over time: insights get promoted by recurrence, stale patterns fade via freshness decay, and HIGH-confidence rules get baked into your `CLAUDE.md` or agent files.
+**Important**: `CLAUDE.md` remains the human-owned source of truth for your project rules. `context.md` is a generated briefing that supplements it — it never overrides or replaces human-authored instructions.
 
 ## Prerequisites
 
@@ -93,14 +93,14 @@ rm -rf ~/.claude/skills/reflect
 /reflect slow builds and bake     — topic search + auto-bake
 ```
 
-### Query the knowledge store
+### Query the evidence store
 
 ```text
 /reflect why src/auth/middleware.ts    — decision trail for a file
+/reflect context                       — regenerate the context briefing
 /reflect what-failed testing           — failure patterns about testing
+/reflect status                        — evidence store dashboard
 /reflect search database               — search all knowledge artifacts
-/reflect status                        — knowledge store dashboard
-/reflect context                       — regenerate the living context file
 ```
 
 ### Topic Search
@@ -111,7 +111,7 @@ Any argument that isn't a recognized command, number, session ID, or "and bake" 
 - Combinable with "and bake"
 - Caps at 10 matched sessions per run
 
-## The Knowledge Store (`.reflect/`)
+## The Evidence Store (`.reflect/`)
 
 After running `/reflect`, your project gets a `.reflect/` directory:
 
@@ -119,46 +119,49 @@ After running `/reflect`, your project gets a `.reflect/` directory:
 .reflect/
 ├── index.md            # Master lookup table
 ├── sessions/           # One file per analyzed session (intent, outcome, patterns)
-├── decisions/          # Architectural Decision Records extracted from sessions
+├── decisions/          # Architectural Decision Records — the durable primitives
 ├── insights/           # Patterns that compound across sessions (with confidence + freshness)
-├── files/              # Per-file knowledge maps (what the AI knows about each file)
-├── context.md          # THE dynamic context file (living CLAUDE.md supplement)
+├── files/              # Best-effort file knowledge cache (convenience index, not canonical)
+├── context.md          # Compiled briefing — generated, NOT a source of truth
 └── history/            # Archived stale data
 ```
 
+**Decisions and insights are the durable primitives.** Sessions are the evidence. File maps are a convenience cache rebuilt from sessions. `context.md` is a compiled view regenerated on demand — never the canonical source.
+
 Everything is plain Markdown with YAML frontmatter — git-friendly, human-readable, diffable.
 
-## Dynamic Context Injection
+## Context Briefing
 
-The core innovation. Instead of manually maintaining CLAUDE.md rules, `/reflect` generates a living context file that evolves with your project.
+`/reflect` compiles a context briefing from the evidence store — a filtered, prioritized summary of what the AI needs to know for the current state of the project.
 
 ### Setup
 
-Add one line to your `CLAUDE.md`:
+Optionally add one line to your `CLAUDE.md`:
 
 ```markdown
 @.reflect/context.md
 ```
 
-That's it. Every session now starts with auto-generated, prioritized knowledge:
+This supplements your `CLAUDE.md` with evidence-backed context:
 
-- **Active Rules** — HIGH-confidence insights from real session evidence
-- **Key Decisions** — architectural choices with reasoning
-- **File Notes** — important facts about recently-touched files
+- **Active Rules** — HIGH-confidence insights from real session evidence, with expiry dates
+- **Key Decisions** — architectural choices with reasoning (these don't decay)
 - **Watch Out** — failure patterns to avoid
+
+**`CLAUDE.md` is the constitution. `context.md` is the briefing.** If they conflict, CLAUDE.md wins. The briefing never overrides human-authored rules — it only adds evidence-backed supplementary context.
 
 ### Freshness Decay
 
-Insights aren't permanent. They have freshness scores that decay over time:
+Temporal insights decay over time. Architectural insights decay much more slowly (365-day vs 60-day half-life):
 
-| Days since last seen | Freshness |
-|---------------------|-----------|
-| Today | 1.0 |
-| 30 days | 0.71 |
-| 60 days | 0.50 |
-| 120 days | 0.25 |
+| Days since last seen | Temporal | Architectural |
+|---------------------|----------|---------------|
+| Today | 1.0 | 1.0 |
+| 60 days | 0.50 | 0.89 |
+| 120 days | 0.25 | 0.79 |
+| 365 days | 0.02 | 0.50 |
 
-Stale insights drop out of `context.md` automatically. Recurring patterns stay fresh.
+Stale insights drop out of the briefing automatically. Recurring patterns stay fresh. Contradicted insights are excluded regardless of freshness.
 
 ## How Bake-In Works
 
