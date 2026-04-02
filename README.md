@@ -1,40 +1,89 @@
 # Reflect
 
-**A Claude Code skill that turns your session transcripts into permanent improvements.**
+**Turn your AI coding sessions into permanent improvements.**
 
-Run `/reflect` after a few coding sessions and get structured analysis of what worked, what didn't, and what your agents (or CLAUDE.md) should learn. Powered by [Entire CLI](https://entire.io) session capture.
+`/reflect` analyzes your session transcripts and extracts what worked, what didn't, and what your AI assistant should learn. Insights get baked directly into your project's `CLAUDE.md` or agent files so the same mistakes never happen twice.
 
-## What It Does
+Powered by [Entire CLI](https://entire.io) session capture. Works with **Claude Code** and **Cursor**.
 
-1. Reads session transcripts captured by Entire CLI
-2. Extracts patterns: retry loops, research gaps, what worked well, time sinks, escalation resolutions
-3. Assigns confidence levels (HIGH/MEDIUM/LOW) based on recurrence and severity
-4. Writes structured reflections to `.claude/reflections.md`
-5. Optionally bakes HIGH confidence insights into your CLAUDE.md or agent files
+## How It Works
 
-## Requirements
+1. [Entire CLI](https://entire.io) records your coding sessions as transcripts
+2. You run `/reflect` when you want to learn from recent sessions
+3. The skill extracts patterns: retry loops, research gaps, time sinks, what worked well
+4. Each pattern gets a confidence level (HIGH/MEDIUM/LOW) based on severity and recurrence
+5. HIGH confidence insights can be baked into your `CLAUDE.md` or agent files as actionable rules
 
-- [Entire CLI](https://entire.io) installed and enabled in your project
+Over time, your project accumulates real, evidence-based instructions from actual session data — not guesses.
+
+## Prerequisites
+
+- **[Entire CLI](https://entire.io)** installed and enabled in your project
 - At least one completed session to analyze
+
+```bash
+# Install Entire CLI (if you haven't already)
+npm install -g @anthropic-ai/entire-cli
+
+# Enable it in your project
+cd your-project
+entire enable
+```
 
 ## Install
 
-### Symlink (recommended for development)
+### One-liner
 
 ```bash
-git clone https://github.com/codeyogi911/reflect.git
-mkdir -p ~/.claude/skills/reflect
-ln -sf "$(pwd)/reflect/SKILL.md" ~/.claude/skills/reflect/SKILL.md
-ln -sf "$(pwd)/reflect/templates" ~/.claude/skills/reflect/templates
+git clone https://github.com/codeyogi911/reflect.git && \
+mkdir -p ~/.claude/skills/reflect && \
+ln -sf "$(cd reflect && pwd)/SKILL.md" ~/.claude/skills/reflect/SKILL.md && \
+ln -sf "$(cd reflect && pwd)/templates" ~/.claude/skills/reflect/templates
 ```
 
-### Copy
+### Step by step
 
 ```bash
+# 1. Clone the repo
 git clone https://github.com/codeyogi911/reflect.git
+
+# 2. Create the skill directory
 mkdir -p ~/.claude/skills/reflect
-cp reflect/SKILL.md ~/.claude/skills/reflect/SKILL.md
-cp -r reflect/templates ~/.claude/skills/reflect/templates
+
+# 3. Symlink the skill files (keeps you up to date with git pull)
+ln -sf "$(cd reflect && pwd)/SKILL.md" ~/.claude/skills/reflect/SKILL.md
+ln -sf "$(cd reflect && pwd)/templates" ~/.claude/skills/reflect/templates
+```
+
+### Verify installation
+
+```bash
+ls -la ~/.claude/skills/reflect/
+# You should see SKILL.md and templates/ pointing to your cloned repo
+```
+
+### Compatibility
+
+| Tool | Works? | Notes |
+|------|--------|-------|
+| **Claude Code** (CLI, Desktop, Web) | Yes | Skills loaded from `~/.claude/skills/` |
+| **Cursor** | Yes | Automatically loads `~/.claude/skills/` |
+
+No configuration needed — both tools pick up skills from `~/.claude/skills/` automatically.
+
+### Updating
+
+```bash
+cd reflect
+git pull
+```
+
+Because the install uses symlinks, pulling updates takes effect immediately. No re-install needed.
+
+### Uninstall
+
+```bash
+rm -rf ~/.claude/skills/reflect
 ```
 
 ## Usage
@@ -46,6 +95,28 @@ cp -r reflect/templates ~/.claude/skills/reflect/templates
 /reflect [session-id]        — analyze a specific session
 ```
 
+### What happens when you run `/reflect`
+
+1. Reads your session transcripts via Entire CLI
+2. Looks for patterns (retry loops, failures, successes, time sinks)
+3. Cross-references against prior reflections to track recurring issues
+4. Writes a structured reflection to `.claude/reflections.md`
+5. Shows you the key findings and offers to bake HIGH confidence insights
+
+### Example output
+
+After running `/reflect`, you might see:
+
+> **Sessions analyzed:** 3 (abc123, def456, ghi789)
+>
+> **Issues found:**
+> - **CLI flag guessing** (HIGH): In 2/3 sessions, assumed `--format json` flag existed without checking `--help` first. Caused 3+ retries each time.
+>
+> **What worked:**
+> - **Test-first approach** in session def456 — zero rework on the auth module.
+>
+> **Recommendation:** Bake "always check `--help` before assuming CLI flags" into CLAUDE.md?
+
 ## What It Creates
 
 ```
@@ -54,23 +125,46 @@ your-project/
     └── reflections.md    — rolling reflection log (newest first)
 ```
 
+Reflections accumulate over time. When the file grows past 50 entries, older ones get summarized into a historical patterns section automatically.
+
 ## How Bake-In Works
 
-When you run `/reflect and bake` (or confirm when asked), HIGH confidence insights get written as actionable instructions into your project:
+When you run `/reflect and bake` (or confirm when prompted), HIGH confidence insights get written as actionable instructions:
 
 - **If you have agent files** (`.claude/agents/*.md`): insights go into the relevant agent's `## Project-Specific Rules` section
 - **If you only have CLAUDE.md**: insights go into a `## Session Insights` section
 - Insights are never duplicated — the skill checks what's already baked in
 
-Over time, your agents and project instructions accumulate real, evidence-based improvements from actual session data.
-
-## How Confidence Works
+## Confidence Levels
 
 | Level | Criteria | What Happens |
 |-------|----------|-------------|
-| **HIGH** | Seen in 2+ sessions, or caused significant rework (3+ retries), or confirmed from a prior MEDIUM | Offered for bake-in |
-| **MEDIUM** | Seen once but significant (caused failure or major time sink) | Logged in reflections.md, promoted to HIGH if it recurs |
+| **HIGH** | Seen in 2+ sessions, or caused significant rework (3+ retries), or promoted from a prior MEDIUM | Offered for bake-in |
+| **MEDIUM** | Seen once but significant (caused failure or major time sink) | Logged, promoted to HIGH if it recurs |
 | **LOW** | Minor or uncertain pattern | Logged for reference |
+
+## FAQ
+
+**Q: Does this work without Entire CLI?**
+No. Entire CLI captures the session transcripts that `/reflect` analyzes. Without it, there's nothing to reflect on.
+
+**Q: Will it modify my code?**
+No. It only writes to `.claude/reflections.md` and optionally to `CLAUDE.md` or agent files. It never touches your source code.
+
+**Q: Can I use this on any project?**
+Yes. Install once, use everywhere. The skill is global (`~/.claude/skills/`), but reflections and insights are per-project.
+
+**Q: What if I want to edit a baked insight?**
+Just edit the `## Session Insights` section in your `CLAUDE.md` or the `## Project-Specific Rules` section in your agent file. They're plain markdown.
+
+## Contributing
+
+1. Fork the repo
+2. Symlink your fork for development (see Install above)
+3. Edit `SKILL.md` to change the analysis workflow
+4. Edit `templates/reflection-format.md` to change the output format
+5. Changes take effect immediately when symlinked — no rebuild needed
+6. Submit a PR
 
 ## License
 
