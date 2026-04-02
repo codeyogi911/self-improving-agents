@@ -1,28 +1,34 @@
 {
-  "skill_name": "self-improving-agents",
+  "skill_name": "reflect",
   "evals": [
     {
       "id": 1,
-      "prompt": "Set up self-improving agents in my Node.js project that uses Express, Jest for testing, and ESLint",
-      "expected_output": "Requires Entire CLI. Creates .claude/agents/ with 6 agent files (including session-analyzer), gaps.md, progress.md. Configures Entire hooks. Agent files should mention Jest and ESLint by name. CLAUDE.md should have the harness section appended.",
+      "prompt": "Analyze my recent sessions and show me what patterns you find",
+      "expected_output": "Checks for Entire CLI. Runs entire status and entire explain. Identifies patterns (retry loops, successes, issues). Writes structured reflection to .claude/reflections.md. Shows summary to user with confidence levels.",
       "files": []
     },
     {
       "id": 2,
-      "prompt": "I want agents that can build and improve code in my Python Django project. We use pytest and have Playwright for e2e tests.",
-      "expected_output": "Requires Entire CLI. Creates .claude/agents/ with 6 agent files (including session-analyzer), gaps.md, progress.md. Configures Entire hooks. Builder should reference pytest, e2e-tester should reference Playwright. Should detect Django as framework.",
+      "prompt": "Reflect on my sessions — I don't have Entire installed",
+      "expected_output": "Checks for Entire CLI, detects it's missing. Reports that Entire CLI is required and links to https://entire.io. Does NOT create any files or attempt analysis.",
       "files": []
     },
     {
       "id": 3,
-      "prompt": "scaffold agent harness into this empty repo — no framework, no tests, just a README",
-      "expected_output": "Requires Entire CLI. Creates .claude/agents/ with session-analyzer plus standard agents, gaps.md, progress.md. Configures Entire hooks. Should handle the 'no test runner' and 'no e2e' cases gracefully without broken placeholders.",
+      "prompt": "/reflect and bake — I have a CLAUDE.md but no .claude/agents/ directory",
+      "expected_output": "Analyzes sessions, produces reflection. HIGH confidence insights are baked into CLAUDE.md under a ## Session Insights section. Does NOT create agent files. Marks baked insights as BAKED in reflections.md.",
       "files": []
     },
     {
       "id": 4,
-      "prompt": "Set up self-improving agents in my project. I have the entire CLI installed at ~/.local/bin/entire and want telemetry enabled.",
-      "expected_output": "Detects Entire CLI, asks user before configuring. Creates session-analyzer.md in .claude/agents/. Runs entire configure. Adds deny permission for .entire/metadata. CLAUDE.md mentions session analysis. Orchestrator EVOLVE phase references session-analyzer.",
+      "prompt": "/reflect and bake — I have .claude/agents/builder.md with a ## Project-Specific Rules section",
+      "expected_output": "Analyzes sessions, produces reflection. Builder-relevant HIGH confidence insights are appended to .claude/agents/builder.md's ## Project-Specific Rules section. Other insights go to CLAUDE.md. Does NOT overwrite existing rules.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "/reflect last 2 sessions",
+      "expected_output": "Only analyzes the 2 most recent sessions (not the default 5). Produces reflection scoped to those sessions. Writes to .claude/reflections.md.",
       "files": []
     }
   ]
