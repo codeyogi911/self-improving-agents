@@ -45,3 +45,4 @@ last_validated: <YYYY-MM-DD>
 - **confidence**: `HIGH` if the decision has been validated by successful sessions, `MEDIUM` if new/untested
 - **last_validated**: update this when a session confirms the decision still holds
 - Decision IDs are sequential four-digit numbers: 0001, 0002, etc.
+- **Decisions do NOT decay by default**. Unlike insights, decisions represent architectural choices and remain valid until explicitly superseded or deprecated. They should always appear in context.md if their status is `accepted`, regardless of age.

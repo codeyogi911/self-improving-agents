@@ -1,25 +1,28 @@
 ---
 name: reflect
 description: >
-  Analyze AI coding sessions to build a dynamic knowledge layer for your repo.
-  Extracts patterns, decisions, and insights from session transcripts, stores
-  them in a structured knowledge base (.reflect/), and generates living context
-  that makes every future session smarter. Commands: /reflect (analyze sessions),
-  /reflect why <file> (decision trail), /reflect what-failed <topic> (failure
-  patterns), /reflect context (regenerate living context), /reflect status
-  (knowledge dashboard). Also trigger on "reflect", "session analysis", "what
-  went wrong", "what can I improve", "why did we", "what failed".
+  The opinionated interpretation layer for your repo. Entire CLI is the durable
+  write-path and checkpoint substrate; /reflect reads from that substrate to
+  extract decisions, failures, and working context from session transcripts.
+  Stores interpretations in a structured knowledge base (.reflect/) and generates
+  context overlays that make every future session smarter. Commands: /reflect
+  (analyze sessions), /reflect why <file> (decision trail), /reflect what-failed
+  <topic> (failure patterns), /reflect context (regenerate context overlay),
+  /reflect status (knowledge dashboard). Also trigger on "reflect", "session
+  analysis", "what went wrong", "what can I improve", "why did we", "what failed".
 allowed-tools: Read, Edit, Bash, Glob, Grep
 metadata:
   author: shashwatjain
   version: '2.0'
 ---
 
-# Reflect — Dynamic Repository Knowledge
+# Reflect — Opinionated Interpretation Layer
 
-You analyze session transcripts captured by Entire CLI, extract patterns and
-decisions, store them in a structured knowledge base (`.reflect/`), and generate
-dynamic context that evolves with every session.
+You are the interpretation layer for a repository. Entire CLI is the durable
+write-path — it captures and checkpoints sessions. You read from that substrate
+to extract decisions, failures, and working context, storing interpretations in
+a structured knowledge base (`.reflect/`) and generating context overlays that
+evolve with every session.
 
 Parse $ARGUMENTS to determine which command to run:
 
@@ -75,6 +78,22 @@ For the default Analyze command, further parse remaining $ARGUMENTS:
    ```bash
    mkdir -p .reflect/sessions .reflect/decisions .reflect/insights .reflect/files .reflect/history
    ```
+
+4. Recommend `.gitignore` for generated artifacts:
+   - Check if `.gitignore` exists and whether it already contains `.reflect/context.md`.
+   - If not, suggest to the user:
+     > "Tip: Add `.reflect/context.md` to your `.gitignore`. It's a generated
+     > overlay — the canonical source is the typed records in `.reflect/sessions/`,
+     > `.reflect/decisions/`, `.reflect/insights/`, and `.reflect/files/`.
+     > Those should be committed; `context.md` should be regenerated locally."
+
+5. **Size budget**: Check the total size of `.reflect/`:
+   ```bash
+   du -sh .reflect/ 2>/dev/null
+   ```
+   If the directory exceeds 5MB, warn the user:
+   > "Warning: `.reflect/` is over 5MB. Consider running `/reflect status` to
+   > identify stale artifacts for archival."
    If `.reflect/index.md` does not exist, create it with:
    ```markdown
    # Reflect Knowledge Index
@@ -168,6 +187,24 @@ alternatives were considered. For each decision found:
    - **MEDIUM** — seen once but caused failure or major time sink
    - **LOW** — minor or uncertain pattern
 
+6. **Contradiction check**: When creating or updating an insight, search existing
+   insights for contradictions. If a new insight directly contradicts an existing
+   one (e.g., "always use X" vs "never use X"):
+   - Set `contradicted_by: <new-slug>` on the old insight.
+   - Set `contradicts: <old-slug>` on the new insight.
+   - A contradicted insight is excluded from context.md but NOT deleted.
+
+7. **Negative memory**: If a session shows an approach was tried and deliberately
+   abandoned (reverted, caused regressions, or explicitly rejected), create an
+   insight with `category: rejected-approach`. These serve as "don't go here
+   again" markers and prevent future sessions from re-attempting failed approaches.
+
+8. **Relevance typing**: When creating an insight, assign `relevance_type`:
+   - `architectural` if it relates to design patterns, structural choices,
+     language constraints, or invariants that won't change with time.
+   - `temporal` (default) if it relates to current tooling, dependencies,
+     workarounds, or transient conditions.
+
 ### Step 5: Write to Knowledge Store
 
 Read the relevant format templates from the `templates/` directory.
@@ -251,8 +288,9 @@ every decision that shaped it, and every insight related to it.
 3. If the file knowledge map exists:
    a. Read it.
    b. Follow the `sessions` references — read each session summary.
-   c. Follow the `decisions` references — read each decision record.
-   d. Follow the `insights` references — read each insight.
+   c. From each session summary, extract `commits` from frontmatter for SHA references.
+   d. Follow the `decisions` references — read each decision record.
+   e. Follow the `insights` references — read each insight.
 
 4. If no file knowledge map exists:
    a. Search `.reflect/sessions/*.md` for sessions that mention this file
@@ -261,16 +299,28 @@ every decision that shaped it, and every insight related to it.
    c. Search `.reflect/insights/*.md` for insights from sessions involving
       this file.
 
-5. Compose a **chronological narrative**:
+5. Compose a **structured decision graph with receipts**:
    > "Here's what I know about `<file>`:
    >
    > **What it does**: <from file knowledge map>
    >
-   > **Decision trail**:
-   > - <date>: <decision or change, with session reference>
-   > - <date>: <next event>
+   > **Decision trail** (with receipts):
+   > - <YYYY-MM-DD> `<commit-SHA-short>` (session `<session-id>`):
+   >   <What was decided or changed, and why>
+   >   Decision ref: <decision-id if applicable>
+   > - <YYYY-MM-DD> `<commit-SHA-short>` (session `<session-id>`):
+   >   <Next event>
    >
-   > **Active rules**: <insights that apply to this file>
+   > **Competing hypotheses** (where close alternatives existed):
+   > - <Decision title>: Chose <option A> over <option B> because <reason>.
+   >   Confidence: <HIGH|MEDIUM>. <option B> would be better if <condition>.
+   >
+   > **Active rules**: <insights that apply to this file, with session citations>
+   >
+   > **Rejected approaches**: <any `rejected-approach` insights for this file>
+   >
+   > **Unresolved ambiguity**:
+   > - <Things we're not sure about — conflicting evidence, untested assumptions>
    >
    > **Pitfalls**: <common issues from file knowledge map>"
 
@@ -334,12 +384,21 @@ into AI sessions via `@.reflect/context.md` in CLAUDE.md.
 
 3. **Gather insights**: Read all `.reflect/insights/*.md`. For each:
    - Parse `last_seen` from frontmatter.
-   - Calculate freshness: `2^(-(days_since_last_seen / half_life_days))`
+   - Calculate freshness: `2^(-(days_since_last_seen / half_life_days))`.
+     Use half_life_days = 365 for `relevance_type: architectural` insights,
+     default (60) for `temporal`.
+   - Exclude insights where `contradicted_by` is set (they've been superseded).
    - Filter out insights below freshness threshold.
+   - Calculate expiry date: the future date when freshness will drop below the
+     threshold, given the half-life formula. Include this in context.md output.
+   - Cross-check each insight against CLAUDE.md rules. If an insight contradicts
+     or conflicts with a human-authored rule in CLAUDE.md, exclude it from
+     context.md and log a warning in the summary output.
    - Sort by confidence (HIGH first) then freshness (descending).
 
 4. **Gather decisions**: Read all `.reflect/decisions/*.md`. Filter to
-   `status: accepted` from the last 90 days. Sort by date descending.
+   `status: accepted`. Decisions do not decay — include all accepted decisions,
+   sorted by date descending. Cap at 10 for the context file.
 
 5. **Gather file knowledge**: Read all `.reflect/files/*.md`. Filter to files
    whose `last_updated` is within the last 5 sessions (check by date).
@@ -436,3 +495,10 @@ Searches across all knowledge artifacts for a query.
 - When updating existing knowledge artifacts, preserve existing content and merge
 - Always regenerate context.md after an analysis run
 - Template files are in the same directory as this SKILL.md — read them at runtime
+- `.reflect/context.md` is a generated overlay — canonical data lives in the typed
+  records (sessions/, decisions/, insights/, files/). context.md should be in .gitignore.
+- NEVER include file contents, environment variable values, API keys, tokens, passwords,
+  or any credential-like strings in knowledge artifacts. If session data contains
+  secrets, redact them before writing. Use `[REDACTED]` as a placeholder.
+- Total `.reflect/` directory should stay under 5MB. Warn the user and suggest
+  archiving stale artifacts to `.reflect/history/` if it grows beyond that.

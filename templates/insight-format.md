@@ -15,7 +15,10 @@ created: <YYYY-MM-DD>
 last_seen: <YYYY-MM-DD>
 times_seen: <N>
 sessions: [<session-id>, ...]
-category: <anti-pattern | best-practice | pitfall | workflow>
+category: <anti-pattern | best-practice | pitfall | workflow | rejected-approach>
+relevance_type: <temporal | architectural>
+contradicts: <insight-slug or null>
+contradicted_by: <insight-slug or null>
 baked: <true | false>
 baked_to: <CLAUDE.md or .claude/agents/{agent}.md or null>
 ---
@@ -46,8 +49,14 @@ be pasted directly into CLAUDE.md or an agent file.>
   - `best-practice`: something that works well (test-first, focused investigation)
   - `pitfall`: a specific gotcha in the codebase (missing env file, implicit dependency)
   - `workflow`: a process improvement (run tests after auth changes, check CI before pushing)
+  - `rejected-approach`: something that was tried and deliberately abandoned — negative memory to prevent re-attempts
+- **relevance_type**:
+  - `temporal` (default): normal freshness decay. For patterns tied to current tooling, dependencies, or transient conditions. Uses default half_life (60 days).
+  - `architectural`: slow decay. For patterns tied to fundamental design choices, language constraints, or structural invariants. Uses half_life of 365 days.
+- **Contradiction tracking**: when a new insight contradicts an existing one, set `contradicted_by: <new-slug>` on the old insight and `contradicts: <old-slug>` on the new one. A contradicted insight is excluded from context.md generation regardless of freshness.
+- **Evidence weight**: insights that caused 3+ retries or disproportionate time sinks should be created at MEDIUM minimum, not LOW. Note retry count and estimated time cost in the Evidence Trail.
 - **Freshness** is NOT stored — it's calculated at read time from `last_seen`:
-  `freshness = 2^(-(days_since_last_seen / half_life_days))` where default half_life = 60 days
+  `freshness = 2^(-(days_since_last_seen / half_life_days))` where half_life depends on relevance_type (60 days for temporal, 365 days for architectural)
 - **Promotion rules**:
   - Created at LOW: minor observation
   - Created at MEDIUM: caused failure or significant time sink

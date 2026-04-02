@@ -1,8 +1,8 @@
 # Reflect
 
-**Dynamic repository knowledge for AI coding agents.**
+**The opinionated interpretation layer for AI coding agents.**
 
-Your repo has amnesia. Git remembers *what* changed — nobody remembers *why*. `/reflect` builds a living knowledge layer from your AI coding sessions: decisions, patterns, insights, and file-level context that grows with every session and makes the next one smarter.
+Your repo has amnesia. Git remembers *what* changed — nobody remembers *why*. Entire CLI captures and checkpoints your coding sessions. `/reflect` reads from that substrate to extract decisions, patterns, and insights — building an interpretive overlay that grows with every session and makes the next one smarter.
 
 Works with **Claude Code** and **Cursor**. Requires [Entire CLI](https://entire.io) for session capture.
 
@@ -188,7 +188,13 @@ No. It only writes to `.reflect/`, `.claude/reflections.md`, and optionally to `
 Yes. Install once, use everywhere. The skill is global (`~/.claude/skills/`), but the knowledge store is per-project.
 
 **Q: What about `.reflect/` in git?**
-We recommend committing `.reflect/` so team members benefit from shared knowledge. Add `.reflect/context.md` to `.gitignore` if you prefer to generate it locally.
+Commit the typed records (`.reflect/sessions/`, `.reflect/decisions/`, `.reflect/insights/`, `.reflect/files/`, `.reflect/index.md`) so team members benefit from shared knowledge. Add `.reflect/context.md` to `.gitignore` — it's a generated overlay that each developer regenerates locally via `/reflect context`. Recommended `.gitignore` entry:
+```
+.reflect/context.md
+```
+
+**Q: What about secrets in session data?**
+`/reflect` never includes file contents, environment variable values, or credentials in knowledge artifacts. If sensitive data appears in session transcripts, it is redacted before writing.
 
 **Q: What if I want to edit knowledge artifacts?**
 They're plain markdown. Edit them directly — `/reflect` will respect your changes on the next run.

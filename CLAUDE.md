@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-A Claude Code skill called `/reflect` that builds dynamic repository knowledge from AI coding sessions. Analyzes transcripts to extract patterns, decisions, and insights, stores them in a structured knowledge base (`.reflect/`), and generates living context that makes every future session smarter. Powered by [Entire CLI](https://entire.io) for session capture.
+A Claude Code skill called `/reflect` — the opinionated interpretation layer for your repo. Entire CLI is the durable write-path and checkpoint substrate; `/reflect` reads from that substrate to extract decisions, failures, and working context. Stores interpretations in a structured knowledge base (`.reflect/`) and generates context overlays that make every future session smarter.
 
 ## Structure
 
