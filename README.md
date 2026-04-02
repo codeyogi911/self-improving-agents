@@ -18,16 +18,17 @@ Over time, your project accumulates real, evidence-based instructions from actua
 
 ## Prerequisites
 
-- **[Entire CLI](https://entire.io)** installed and enabled in your project
+- **[Entire CLI](https://entire.io)** — captures your session transcripts
 - At least one completed session to analyze
 
-```bash
-# Install Entire CLI (if you haven't already)
-npm install -g @anthropic-ai/entire-cli
+Don't have Entire CLI yet? No worries — the first time you run `/reflect`, the skill will detect it's missing and walk you through installation and setup. Or install it manually:
 
-# Enable it in your project
-cd your-project
-entire enable
+```bash
+# macOS / Linux
+brew tap entireio/tap && brew install entireio/tap/entire
+
+# Or via Go
+go install github.com/entireio/cli/cmd/entire@latest
 ```
 
 ## Install
@@ -64,10 +65,10 @@ ls -la ~/.claude/skills/reflect/
 
 ### Compatibility
 
-| Tool | Works? | Notes |
-|------|--------|-------|
-| **Claude Code** (CLI, Desktop, Web) | Yes | Skills loaded from `~/.claude/skills/` |
-| **Cursor** | Yes | Automatically loads `~/.claude/skills/` |
+| Tool                               | Works? | Notes                                  |
+|------------------------------------|--------|----------------------------------------|
+| **Claude Code** (CLI, Desktop, Web) | Yes    | Skills loaded from `~/.claude/skills/` |
+| **Cursor**                          | Yes    | Automatically loads `~/.claude/skills/` |
 
 No configuration needed — both tools pick up skills from `~/.claude/skills/` automatically.
 
@@ -88,12 +89,23 @@ rm -rf ~/.claude/skills/reflect
 
 ## Usage
 
+```text
+/reflect                          — analyze last 5 sessions
+/reflect last 3 sessions          — scope to 3 most recent
+/reflect and bake                 — analyze + auto-bake HIGH insights
+/reflect [session-id]             — analyze a specific session
+/reflect auth issues              — find sessions about auth problems
+/reflect slow builds and bake     — topic search + auto-bake
+/reflect database migration       — find migration-related sessions
 ```
-/reflect                     — analyze last 5 sessions
-/reflect last 3 sessions     — scope to 3 most recent
-/reflect and bake            — analyze + auto-bake HIGH insights
-/reflect [session-id]        — analyze a specific session
-```
+
+### Topic Search
+
+Any argument that isn't a number, session ID, or "and bake" is treated as a topic search. The skill retrieves all session intents and uses semantic matching to find relevant ones — so `/reflect auth issues` will match sessions about "JWT refresh bugs" or "login redirect loops", not just sessions with the exact words "auth issues".
+
+- Searches across **all** sessions, not just recent ones
+- Combinable with "and bake" (e.g., `/reflect auth issues and bake`)
+- Caps at 10 matched sessions per run
 
 ### What happens when you run `/reflect`
 
@@ -110,16 +122,18 @@ After running `/reflect`, you might see:
 > **Sessions analyzed:** 3 (abc123, def456, ghi789)
 >
 > **Issues found:**
+>
 > - **CLI flag guessing** (HIGH): In 2/3 sessions, assumed `--format json` flag existed without checking `--help` first. Caused 3+ retries each time.
 >
 > **What worked:**
+>
 > - **Test-first approach** in session def456 — zero rework on the auth module.
 >
 > **Recommendation:** Bake "always check `--help` before assuming CLI flags" into CLAUDE.md?
 
 ## What It Creates
 
-```
+```text
 your-project/
 └── .claude/
     └── reflections.md    — rolling reflection log (newest first)
@@ -138,7 +152,7 @@ When you run `/reflect and bake` (or confirm when prompted), HIGH confidence ins
 ## Confidence Levels
 
 | Level | Criteria | What Happens |
-|-------|----------|-------------|
+| --- | --- | --- |
 | **HIGH** | Seen in 2+ sessions, or caused significant rework (3+ retries), or promoted from a prior MEDIUM | Offered for bake-in |
 | **MEDIUM** | Seen once but significant (caused failure or major time sink) | Logged, promoted to HIGH if it recurs |
 | **LOW** | Minor or uncertain pattern | Logged for reference |

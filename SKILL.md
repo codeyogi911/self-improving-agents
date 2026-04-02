@@ -31,12 +31,30 @@ If $ARGUMENTS is provided, use it to scope the analysis (e.g., "last 3 sessions"
    ```bash
    which entire || test -f ~/.local/bin/entire
    ```
-   If NOT found → tell the user: "Entire CLI is required for session analysis.
-   Install it from https://entire.io" and stop.
+   If NOT found → help the user install it:
+   - Tell them: "Entire CLI is needed to capture session transcripts. Let me
+     help you set it up."
+   - Offer to install via Homebrew:
+     ```bash
+     brew tap entireio/tap && brew install entireio/tap/entire
+     ```
+     Or if they prefer Go: `go install github.com/entireio/cli/cmd/entire@latest`
+   - After installation, ask the user to run `entire login` in their terminal
+     to authenticate (this needs interactive input, so the user must run it
+     themselves).
+   - Once installed, continue to step 1.2.
 
-2. Run `entire status` to check for session history.
-   If no sessions exist → report "No session history available yet. Run some
-   sessions first, then come back to reflect." and stop.
+2. Check if Entire is configured in the current repository:
+   ```bash
+   entire status
+   ```
+   If Entire is not configured in this repo → run `entire enable` to set it
+   up. This runs the full configuration flow and installs agent hooks. Then
+   report: "Entire is now set up! Run some coding sessions, then come back
+   to `/reflect` to analyze them." and stop.
+
+   If Entire is configured but has no sessions → report "No session history
+   available yet. Run some sessions first, then come back to reflect." and stop.
 
 ---
 
@@ -47,12 +65,39 @@ If $ARGUMENTS is provided, use it to scope the analysis (e.g., "last 3 sessions"
 2. Run `entire explain` to get session and commit details. This is your primary
    analysis tool — it shows what happened in each session.
 
-3. Parse $ARGUMENTS for scope:
+3. Parse $ARGUMENTS for scope (in this order):
+   - Strip "and bake" if present → set bake flag (combinable with all other options)
    - "last N sessions" or "last N" → limit to N most recent
-   - A session ID → analyze only that session
-   - "and bake" → auto-proceed to bake-in after analysis (skip confirmation)
+   - A session ID (looks like a hash or short ID) → analyze only that session
+   - Any remaining text that doesn't match the above → treat as a **topic search
+     query** (e.g., "auth issues", "slow builds", "database migration")
    - No scope specified → default to last 5 sessions
    - Cap at 10 sessions per run to keep context manageable
+
+---
+
+## Step 2a: Topic Search (only when a topic query is detected)
+
+If Step 2 identified a topic query in $ARGUMENTS, gather sessions by topic
+instead of by recency:
+
+1. Run `entire explain --short --search-all` to retrieve session intents across
+   all branches and history. Each line includes a session ID and a one-line intent.
+
+2. Review the full list of session intents. Semantically match them against the
+   topic query — be inclusive. "auth issues" should match intents like "Fixed JWT
+   refresh bug in middleware" or "Debugged login redirect loop". Use your judgment
+   as an LLM, not keyword grep.
+
+3. If no sessions match the topic → report: "No sessions found related to
+   '{topic}'. Try a broader topic or run `/reflect` without a topic to see
+   recent sessions." and stop.
+
+4. Note the total number of sessions and how many matched (for the reflection).
+   Cap matched sessions at 10. For each matched session, run
+   `entire explain --session <ID>` to get the full session data for analysis.
+
+5. Proceed to Step 3 (Pattern Extraction) with only the matched sessions.
 
 ---
 
@@ -126,6 +171,8 @@ Write the reflection to `.claude/reflections.md`:
 
 Display a summary to the user showing:
 - Sessions analyzed (count and IDs)
+- If a topic search was used, include: **Topic filter**: {topic} (matched N of
+  total sessions)
 - Key patterns found (top 3-5)
 - HIGH confidence insights with recommended actions
 

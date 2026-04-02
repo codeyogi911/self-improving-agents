@@ -8,6 +8,7 @@ Use this format when writing reflections to `.claude/reflections.md`.
 ## YYYY-MM-DD
 
 ### Sessions Analyzed
+- **Topic filter**: [topic] (matched [N] of [total] sessions) ← only include this line when topic search was used
 - `[session-id]`: [one-line summary of what happened]
 
 ### What Worked Well

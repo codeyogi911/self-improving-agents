@@ -10,7 +10,13 @@
     {
       "id": 2,
       "prompt": "Reflect on my sessions — I don't have Entire installed",
-      "expected_output": "Checks for Entire CLI, detects it's missing. Reports that Entire CLI is required and links to https://entire.io. Does NOT create any files or attempt analysis.",
+      "expected_output": "Checks for Entire CLI, detects it's missing. Offers to install via Homebrew (brew tap entireio/tap && brew install entireio/tap/entire) or Go. Asks user to run entire login to authenticate. Does NOT create any files or attempt analysis until Entire is installed.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "/reflect — Entire is installed but not configured in this repo",
+      "expected_output": "Checks for Entire CLI (found). Runs entire status, detects repo is not configured. Runs entire enable to set up session capture. Reports that Entire is now set up and asks user to run some sessions first. Stops without attempting analysis.",
       "files": []
     },
     {
@@ -29,6 +35,18 @@
       "id": 5,
       "prompt": "/reflect last 2 sessions",
       "expected_output": "Only analyzes the 2 most recent sessions (not the default 5). Produces reflection scoped to those sessions. Writes to .claude/reflections.md.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "/reflect auth issues",
+      "expected_output": "Runs entire explain --short --search-all to get all session intents. Semantically matches sessions related to authentication. Analyzes only matched sessions. Reflection includes Topic filter line showing how many sessions matched. Writes to .claude/reflections.md.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "/reflect slow builds and bake",
+      "expected_output": "Strips 'and bake' flag, treats 'slow builds' as topic search. Searches all session intents for build-performance-related sessions. Analyzes matched sessions, produces reflection. AUTO-bakes HIGH confidence insights without asking. Writes to .claude/reflections.md.",
       "files": []
     }
   ]
