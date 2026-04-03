@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SKILL_DIR="$HOME/.claude/skills/reflect"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-mkdir -p "$SKILL_DIR"
+# CLI: symlink to ~/.local/bin (or /usr/local/bin)
+BIN_DIR="${HOME}/.local/bin"
+mkdir -p "$BIN_DIR"
+ln -sf "$SCRIPT_DIR/reflect" "$BIN_DIR/reflect"
 
+# Skill: Claude Code integration
+SKILL_DIR="$HOME/.claude/skills/reflect"
+mkdir -p "$SKILL_DIR"
 ln -sf "$SCRIPT_DIR/SKILL.md" "$SKILL_DIR/SKILL.md"
-ln -sf "$SCRIPT_DIR/templates" "$SKILL_DIR/templates"
 ln -sf "$SCRIPT_DIR/hooks" "$SKILL_DIR/hooks"
 
-echo "reflect installed to $SKILL_DIR"
-echo "Run /reflect in any project to get started."
+echo "reflect CLI installed to $BIN_DIR/reflect"
+echo "reflect skill installed to $SKILL_DIR"
+echo ""
+echo "Make sure $BIN_DIR is on your PATH."
+echo "Run 'reflect init' in any git repo to get started."
