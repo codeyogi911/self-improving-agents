@@ -1,35 +1,113 @@
-# Reflect
+<p align="center">
+  <h1 align="center">reflect</h1>
+  <p align="center">
+    <strong>git answers "what changed." reflect answers "why."</strong>
+  </p>
+  <p align="center">
+    Portable, repo-owned memory for AI coding agents.
+  </p>
+</p>
 
-**Portable, repo-owned memory for AI coding agents.**
+<p align="center">
+  <a href="#how-it-works">How It Works</a> &middot;
+  <a href="#install">Install</a> &middot;
+  <a href="#commands">Commands</a> &middot;
+  <a href="#the-evidence-store">Evidence Store</a> &middot;
+  <a href="SPEC.md">Spec</a> &middot;
+  <a href="ROADMAP.md">Roadmap</a>
+</p>
 
-AI agents have memory — but it's machine-local and vendor-specific. Claude's memory lives under `~/.claude/projects/` on your laptop. Cursor's lives somewhere else. Switch machines, switch agents, onboard a teammate — the memory doesn't travel.
+---
 
-`/reflect` solves this by putting memory where it belongs: **in the repo**. Decisions, failure patterns, and working context are stored as structured Markdown in `.reflect/`, versioned with git, reviewable in PRs, and readable by any compliant agent. Entire CLI captures the evidence; `/reflect` interprets it.
+## The Problem
 
-**Claude remembers for Claude. `.reflect/` remembers for the project.**
+AI agents have memory — but it's trapped.
 
-Works with **Claude Code** and **Cursor**. Requires [Entire CLI](https://entire.io) for session capture.
+Claude's memory lives in `~/.claude/projects/` on your laptop. Cursor's lives somewhere else. Switch machines, switch agents, onboard a teammate — **the memory doesn't travel.**
+
+Decisions get made, approaches get abandoned, lessons get learned. Then the next session starts fresh and makes the same mistakes.
+
+## The Solution
+
+**Put the "why" in the repo.**
+
+```
+git log       →  what happened
+git blame     →  who changed this line
+git bisect    →  which commit broke it
+
+reflect why   →  why is it this way
+reflect brief →  what do I need to know for this task
+reflect what-failed → what went wrong before
+```
+
+Decisions, failure patterns, and working context — stored as structured Markdown in `.reflect/`, versioned with git, reviewable in PRs, readable by any AI agent or human.
+
+**Claude remembers for Claude. Reflect remembers for the project.**
+
+---
 
 ## How It Works
 
 ```
-Session → Entire CLI captures → /reflect interprets → .reflect/ evidence store → context briefing → next session
+                    ┌─────────────┐
+                    │  Evidence    │
+                    │  Sources     │
+                    └──────┬──────┘
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+        ┌─────┴─────┐ ┌───┴────┐ ┌────┴─────┐
+        │  Entire    │ │  Git   │ │  Manual  │
+        │  Sessions  │ │ Commits│ │  Entry   │
+        └─────┬─────┘ └───┬────┘ └────┬─────┘
+              │            │           │
+              └────────────┼───────────┘
+                           │
+                    ┌──────▼──────┐
+                    │  reflect    │
+                    │  CLI        │
+                    │  (analyze)  │
+                    └──────┬──────┘
+                           │
+                    ┌──────▼──────┐
+                    │  .reflect/  │
+                    │  Evidence   │
+                    │  Store      │
+                    └──────┬──────┘
+                           │
+                    ┌──────▼──────┐
+                    │ context.md  │
+                    │ (briefing)  │
+                    └──────┬──────┘
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+        ┌─────┴─────┐ ┌───┴────┐ ┌────┴─────┐
+        │ CLAUDE.md │ │.cursor │ │ copilot- │
+        │           │ │ rules  │ │ instruct │
+        └───────────┘ └────────┘ └──────────┘
 ```
 
-1. **Entire CLI** captures your coding sessions (Claude Code + Cursor) — this is the evidence substrate
-2. `/reflect` interprets transcripts: extracts decisions, patterns, and insights from that evidence
-3. Interpretations are stored in `.reflect/` — structured, git-portable, agent-agnostic
-4. A **compiled briefing** (`.reflect/context.md`) is generated with the most relevant current context
-5. On first run, `/reflect` auto-wires `@.reflect/context.md` into your `CLAUDE.md` so every future session gets the briefing automatically
+1. **Evidence flows in** — from Entire CLI session transcripts, git commits, or manual entries
+2. **Reflect interprets** — extracts decisions, patterns, and insights
+3. **`.reflect/` stores it** — structured, git-portable, agent-agnostic Markdown
+4. **Context briefing generated** — filtered, prioritized summary of what matters now
+5. **Every AI tool gets it** — auto-wired into `CLAUDE.md` today, with Cursor/Copilot/Windsurf wiring planned
 
-**Important**: `CLAUDE.md` remains the human-owned source of truth for your project rules. `context.md` is a generated briefing that supplements it — it never overrides or replaces human-authored instructions.
+---
 
-## Prerequisites
+## Compatibility
 
-- **[Entire CLI](https://entire.io)** for session capture
-- At least one completed session to analyze
+| Tool | Status | How |
+|------|--------|-----|
+| **Claude Code** (CLI, Desktop, Web) | Supported | Skill loaded from `~/.claude/skills/`, context auto-wired into `CLAUDE.md` |
+| **Cursor** | Planned | Will auto-wire into `.cursor/rules/` |
+| **GitHub Copilot** | Planned | Will auto-wire into `copilot-instructions.md` |
+| **Windsurf** | Planned | Will auto-wire into `.windsurfrules` |
+| **Any AI tool** | Works | Reads `.reflect/context.md` directly |
 
-If Entire CLI isn't installed, `/reflect` will detect it and walk you through setup.
+---
 
 ## Install
 
@@ -46,225 +124,229 @@ ln -sf "$(cd reflect && pwd)/hooks" ~/.claude/skills/reflect/hooks
 ### Step by step
 
 ```bash
-# 1. Clone the repo
+# 1. Clone
 git clone https://github.com/codeyogi911/reflect.git
 
-# 2. Create the skill directory
+# 2. Create skill directory
 mkdir -p ~/.claude/skills/reflect
 
-# 3. Symlink the skill files (keeps you up to date with git pull)
+# 3. Symlink (stays up to date with git pull)
 ln -sf "$(cd reflect && pwd)/SKILL.md" ~/.claude/skills/reflect/SKILL.md
 ln -sf "$(cd reflect && pwd)/templates" ~/.claude/skills/reflect/templates
 ln -sf "$(cd reflect && pwd)/hooks" ~/.claude/skills/reflect/hooks
 ```
 
-### Verify installation
+### Verify
 
 ```bash
 ls -la ~/.claude/skills/reflect/
-# You should see SKILL.md and templates/ pointing to your cloned repo
+# SKILL.md and templates/ should point to your cloned repo
 ```
 
-### Compatibility
-
-| Tool                               | Works? | Notes                                  |
-|------------------------------------|--------|----------------------------------------|
-| **Claude Code** (CLI, Desktop, Web) | Yes    | Skills loaded from `~/.claude/skills/` |
-| **Cursor**                          | Yes    | Automatically loads `~/.claude/skills/` |
-
-### Updating
+### Update
 
 ```bash
 cd reflect && git pull
+# Symlinks mean changes take effect immediately
 ```
 
-Because the install uses symlinks, pulling updates takes effect immediately.
-
-### Uninstall
-
-```bash
-rm -rf ~/.claude/skills/reflect
-```
+---
 
 ## Commands
 
-### Analyze sessions (default)
+### Analyze sessions
 
-```text
-/reflect                          — analyze last 5 sessions
-/reflect last 3 sessions          — scope to 3 most recent
-/reflect and bake                 — analyze + auto-bake HIGH insights
-/reflect [session-id]             — analyze a specific session
-/reflect auth issues              — find sessions about auth problems
-/reflect slow builds and bake     — topic search + auto-bake
+```bash
+/reflect                          # analyze last 5 sessions
+/reflect last 3 sessions          # scope to 3 most recent
+/reflect and bake                 # analyze + bake HIGH insights (with approval)
+/reflect [session-id]             # analyze a specific session
+/reflect auth issues              # find sessions about auth problems
 ```
 
 ### Query the evidence store
 
-```text
-/reflect why src/auth/middleware.ts    — decision trail for a file
-/reflect brief auth middleware         — task-focused context for current work
-/reflect brief src/auth/               — file-focused context overlay
-/reflect context                       — regenerate the full context briefing
-/reflect what-failed testing           — failure patterns about testing
-/reflect status                        — evidence store dashboard
-/reflect search database               — search all knowledge artifacts
+```bash
+/reflect why src/auth/middleware.ts    # decision trail for a file
+/reflect brief auth middleware         # task-focused context for current work
+/reflect brief src/auth/               # file-focused context overlay
+/reflect context                       # regenerate the full context briefing
+/reflect what-failed testing           # failure patterns about testing
+/reflect status                        # evidence store dashboard
+/reflect search database               # search all knowledge artifacts
 ```
 
-### Topic Search
+### Topic search
 
-Any argument that isn't a recognized command, number, session ID, or "and bake" is treated as a topic search. The skill uses semantic matching — `/reflect auth issues` will match sessions about "JWT refresh bugs" or "login redirect loops".
+Any unrecognized argument is treated as a topic search. Semantic matching means `/reflect auth issues` finds sessions about "JWT refresh bugs" or "login redirect loops."
 
-- Searches across **all** sessions, not just recent ones
-- Combinable with "and bake"
-- Caps at 10 matched sessions per run
+---
 
-## The Evidence Store (`.reflect/`)
+## The Evidence Store
 
 After running `/reflect`, your project gets a `.reflect/` directory:
 
 ```
 .reflect/
-├── index.md            # Master lookup table
-├── sessions/           # One file per analyzed session (intent, outcome, patterns)
-├── decisions/          # Architectural Decision Records — the durable primitives
-├── insights/           # Patterns that compound across sessions (with confidence + freshness)
-├── files/              # Best-effort file knowledge cache (convenience index, not canonical)
-├── context.md          # Compiled briefing — generated, NOT a source of truth
-└── history/            # Archived stale data
+├── index.md              # master lookup table
+├── context.md            # compiled briefing (generated, gitignored)
+├── config.yaml           # optional settings
+│
+├── sessions/             # what happened (evidence)
+│   └── 2026-04-03_abc123.md
+│
+├── decisions/            # what was decided (durable primitives)
+│   └── 0001-use-postgres.md
+│
+├── insights/             # what was learned (patterns that compound)
+│   └── verify-cli-flags.md
+│
+├── files/                # file knowledge cache (convenience index)
+│   └── src--auth--middleware.ts.md
+│
+└── history/              # archived stale artifacts
 ```
 
-**Decisions and insights are the durable primitives.** Sessions are the evidence. File maps are a convenience cache rebuilt from sessions. `context.md` is a compiled view regenerated on demand — never the canonical source.
+**Decisions and insights are the durable primitives.** Sessions are evidence. File maps are a convenience cache. `context.md` is a compiled view — never the source of truth.
 
-Everything is plain Markdown with YAML frontmatter — git-friendly, human-readable, diffable.
+Everything is plain Markdown with YAML frontmatter. Git-friendly. Human-readable. Diffable.
 
-See [`SPEC.md`](SPEC.md) for the full, agent-agnostic format specification — useful if you're building a tool that reads from or writes to `.reflect/`.
+See [`SPEC.md`](SPEC.md) for the full format specification.
+
+---
 
 ## Context Briefing
 
-`/reflect` compiles a context briefing from the evidence store — a filtered, prioritized summary of what the AI needs to know for the current state of the project.
+The briefing is a filtered, prioritized summary of what the AI needs to know right now.
 
-### Setup
+```markdown
+# Dynamic Project Knowledge
 
-On first run, `/reflect` automatically adds `@.reflect/context.md` to your `CLAUDE.md`. This means every future session gets the briefing without any manual setup. If you prefer manual control, remove the line and it won't be re-added.
-
-The briefing supplements your `CLAUDE.md` with evidence-backed context:
-
-- **Active Rules** — HIGH-confidence insights with human-readable staleness cues
-- **Key Decisions** — architectural choices with reasoning (these don't decay)
-- **Watch Out** — failure patterns to avoid
-
-**`CLAUDE.md` is the constitution. `context.md` is the briefing.** If they conflict, CLAUDE.md wins. The briefing never overrides human-authored rules — it only adds evidence-backed supplementary context.
-
-### Freshness Decay
-
-Temporal insights decay over time. Architectural insights decay much more slowly (365-day vs 60-day half-life):
-
-| Days since last seen | Temporal | Architectural |
-|---------------------|----------|---------------|
-| Today | 1.0 | 1.0 |
-| 60 days | 0.50 | 0.89 |
-| 120 days | 0.25 | 0.79 |
-| 365 days | 0.02 | 0.50 |
-
-Stale insights drop out of the briefing automatically. Recurring patterns stay fresh. Contradicted insights are excluded regardless of freshness.
-
-### Human-Readable Staleness
-
-Context briefing entries use action cues instead of raw dates:
-
-```
+## Active Rules
 - Always check CLI --help before assuming flags (HIGH, 3x) — fresh, confirmed 2 days ago
-- Run migrations after schema changes (MEDIUM, 2x) — aging, last confirmed 45 days ago — verify before relying on this
-- Use legacy auth endpoint for SSO (HIGH, 5x) — fading, last confirmed 89 days ago — verify against current code before using
+- Run migrations after schema changes (MEDIUM, 2x) — aging, last confirmed 45 days ago
+
+## Key Decisions
+- **Use Postgres over Mongo**: ACID compliance required for payment flows (2026-03-15)
+
+## Watch Out
+- Docker compose v1 commands fail silently on CI — use v2 syntax (seen 3x)
 ```
 
-This nudges verification behavior rather than requiring mental arithmetic on expiry dates.
+### How it stays fresh
 
-### Task-Focused Context (`/reflect brief`)
+- **Temporal insights** decay with a 60-day half-life — stale knowledge drops out automatically
+- **Architectural insights** decay slowly (365-day half-life) — design decisions persist
+- **Contradicted insights** are excluded regardless of freshness
+- **Human-authored rules always win** — `CLAUDE.md` is the constitution, `context.md` is the briefing
 
-The static briefing covers everything above the freshness threshold. When working on a specific area, use `/reflect brief` for focused context:
+### Staleness tiers
 
-```text
-/reflect brief auth middleware     — topic-focused: shows only auth-related knowledge
-/reflect brief src/auth/           — file-focused: shows decisions and insights for those files
+Each entry carries a human-readable action cue:
+
+| Tier | Freshness | Cue |
+|------|-----------|-----|
+| **fresh** | > 0.7 | "confirmed 2 days ago" |
+| **aging** | 0.3 – 0.7 | "last confirmed 45 days ago — verify before relying on this" |
+| **fading** | < 0.3 | "last confirmed 89 days ago — verify against current code" |
+
+### Task-focused context
+
+The static briefing covers everything. For focused work, use `/reflect brief`:
+
+```bash
+/reflect brief auth middleware     # only auth-related knowledge
+/reflect brief src/auth/           # only decisions and insights for those files
 ```
 
-Output goes to the conversation (not to `context.md`) and includes only the most relevant decisions, rules, file knowledge, and failure patterns for the specified topic or files.
+---
+
+## Trust Model
+
+Not all evidence is equal. Every record carries provenance:
+
+| Source | Trust Level | Can inform context.md? | Can be baked into instructions? |
+|--------|------------|------------------------|--------------------------------|
+| Entire session analysis | `verified` | Yes | Yes (with human approval) |
+| Git commits | `inferred` | Yes | No |
+| PR descriptions | `inferred` | Yes | No |
+| Manual entry | `verified` | Yes | Yes (with human approval) |
+
+**Evidence store = open to all sources. Instruction files = human-gated, verified-only.**
+
+Bake-in always requires explicit human approval. No auto-promotion, ever.
+
+---
 
 ## Session-Start Behavior
 
-After installing, `/reflect` registers a lightweight SessionStart hook. At the start of each session, it checks if new Entire sessions exist since the last analysis. What happens next depends on the `session_start` setting in `.reflect/config.yaml`:
+A lightweight hook checks for new evidence at the start of each session:
 
 | Mode | Behavior |
 |------|----------|
-| `auto` (default) | Regenerates `context.md` from existing evidence and nudges if new sessions exist |
-| `manual` | Prints a reminder: "Run /reflect to capture recent insights." |
+| `auto` (default) | Regenerates `context.md` from existing evidence, nudges if new sessions exist |
+| `manual` | Prints a reminder to run `/reflect` |
 
-To switch to manual mode:
 ```yaml
 # .reflect/config.yaml
-session_start: manual
+session_start: manual  # opt out of auto mode
 ```
 
-In **auto** mode, every new session starts with a fresh context briefing compiled from existing evidence — no dirty working tree, no surprise commits. If new unanalyzed sessions exist, context.md includes a nudge comment so you know when to run `/reflect` for full analysis. In **manual** mode, you get a text reminder instead.
-
-## How Bake-In Works
-
-When you run `/reflect and bake` (or confirm when prompted), HIGH confidence insights get written as actionable instructions:
-
-- **If you have agent files** (`.claude/agents/*.md`): insights go into the relevant agent's `## Project-Specific Rules` section
-- **If you only have CLAUDE.md**: insights go into a `## Session Insights` section
-- Insights are never duplicated — the skill checks what's already baked in
+---
 
 ## Confidence Levels
 
-| Level | Criteria | What Happens |
+| Level | Criteria | What happens |
 |-------|----------|--------------|
-| **HIGH** | Seen in 2+ sessions, or 3+ retries, or promoted from MEDIUM | Offered for bake-in, included in context.md |
-| **MEDIUM** | Seen once but caused failure or major time sink | Logged, promoted to HIGH on recurrence |
-| **LOW** | Minor or uncertain pattern | Logged for reference |
+| **HIGH** | Seen in 2+ sessions, or 3+ retries | Surfaced for bake-in approval |
+| **MEDIUM** | Seen once, caused failure or time sink | Logged, promoted on recurrence |
+| **LOW** | Minor or uncertain | Logged for reference |
+
+---
 
 ## FAQ
 
-**Q: Does this work without Entire CLI?**
-No. Session transcripts are needed for analysis — Entire CLI is what captures them.
+**Does this work without Entire CLI?**
+Not yet. Entire CLI is currently required for session capture. Git-commit-based evidence capture is on the [roadmap](ROADMAP.md) and will make Entire optional.
 
-**Q: Will it modify my code?**
-No. It only writes to `.reflect/`, `.claude/reflections.md`, and optionally to `CLAUDE.md` or agent files. It never touches your source code.
+**Will it modify my code?**
+No. It only writes to `.reflect/` and to `CLAUDE.md` (auto-wires `@.reflect/context.md` on first run). Bake-in to instruction files requires your explicit approval.
 
-**Q: Can I use this on any project?**
-Yes. Install once, use everywhere. The skill is global (`~/.claude/skills/`), but the knowledge store is per-project.
+**What about `.reflect/` in git?**
+Commit the evidence (sessions, decisions, insights, files, index.md). Gitignore `context.md` — it's regenerated locally.
 
-**Q: What about `.reflect/` in git?**
-Commit the typed records (`.reflect/sessions/`, `.reflect/decisions/`, `.reflect/insights/`, `.reflect/files/`, `.reflect/index.md`) so team members benefit from shared knowledge. Add `.reflect/context.md` to `.gitignore` — it's a generated overlay that each developer regenerates locally via `/reflect context`. Recommended `.gitignore` entry:
-```
+```gitignore
 .reflect/context.md
 ```
 
-**Q: What about secrets in session data?**
-`/reflect` never includes file contents, environment variable values, or credentials in knowledge artifacts. If sensitive data appears in session transcripts, it is redacted before writing.
+**What about secrets?**
+Reflect never includes file contents, env values, or credentials. Sensitive data is redacted with `[REDACTED]`.
 
-**Q: What if I want to edit knowledge artifacts?**
-They're plain markdown. Edit them directly — `/reflect` will respect your changes on the next run.
+**Can I edit knowledge artifacts directly?**
+Yes. They're plain Markdown. Reflect respects your changes on the next run.
+
+---
 
 ## For Tool Authors
 
-The `.reflect/` evidence store is an open format. If you're building an AI coding tool, editor plugin, or session capture system, see [`SPEC.md`](SPEC.md) for the full specification. A compliant tool can:
+The `.reflect/` evidence store is an open format. See [`SPEC.md`](SPEC.md) for the full specification.
 
-- **Read** from `.reflect/` to give agents project context at session start
-- **Write** to `.reflect/` to capture decisions, patterns, and insights from sessions
-- **Generate** `context.md` as a compiled briefing for any agent
+A compliant tool can:
+- **Read** from `.reflect/` to give agents project context
+- **Write** to `.reflect/` to capture decisions and patterns
+- **Generate** `context.md` as a compiled briefing
 
-The spec is independent of `/reflect` the skill — it defines the contract for the evidence store itself.
+The spec is independent of the `/reflect` skill — it defines the contract for the evidence store itself.
+
+---
 
 ## Contributing
 
 1. Fork the repo
-2. Symlink your fork for development (see Install above)
+2. Symlink your fork for development (see Install)
 3. Edit `SKILL.md` to change the analysis workflow
 4. Edit `templates/` to change output formats
-5. Changes take effect immediately when symlinked — no rebuild needed
+5. Changes take effect immediately — no rebuild needed
 6. Submit a PR
 
 ## License

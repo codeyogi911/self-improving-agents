@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "Analyze my recent sessions and show me what patterns you find",
-      "expected_output": "Checks for Entire CLI. Runs entire status and entire explain. Identifies patterns (retry loops, successes, issues). Creates .reflect/ directory structure if needed. Writes session summaries to .reflect/sessions/, extracts insights to .reflect/insights/, updates .reflect/index.md. Also writes to .claude/reflections.md for backward compat. Regenerates .reflect/context.md. Shows summary with confidence levels and knowledge store stats."
+      "expected_output": "Checks for Entire CLI. Runs entire status and entire explain. Identifies patterns (retry loops, successes, issues). Creates .reflect/ directory structure if needed. Writes session summaries to .reflect/sessions/, extracts insights to .reflect/insights/, updates .reflect/index.md. Regenerates .reflect/context.md. Shows summary with confidence levels and knowledge store stats."
     },
     {
       "id": 2,
@@ -24,7 +24,7 @@
     {
       "id": 5,
       "prompt": "/reflect last 2 sessions",
-      "expected_output": "Only analyzes the 2 most recent sessions (not the default 5). Creates session summaries in .reflect/sessions/. Extracts insights and decisions. Writes to .claude/reflections.md. Regenerates context.md."
+      "expected_output": "Only analyzes the 2 most recent sessions (not the default 5). Creates session summaries in .reflect/sessions/. Extracts insights and decisions. Regenerates context.md."
     },
     {
       "id": 6,

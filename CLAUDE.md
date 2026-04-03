@@ -10,7 +10,6 @@ A Claude Code skill called `/reflect` — portable, repo-owned memory for AI cod
 
 - `SKILL.md` — the skill definition file (frontmatter + workflow steps, all commands)
 - `SPEC.md` — agent-agnostic specification for the `.reflect/` evidence store format
-- `templates/reflection-format.md` — output format for `.claude/reflections.md` (backward compat)
 - `templates/session-format.md` — format for session summaries in `.reflect/sessions/`
 - `templates/decision-format.md` — format for decision records in `.reflect/decisions/`
 - `templates/insight-format.md` — format for insights in `.reflect/insights/`

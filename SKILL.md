@@ -208,9 +208,6 @@ alternatives were considered. For each decision found:
 
 3. Read `.claude/agents/` if present — check for overlap with existing rules.
 
-4. Also read `.claude/reflections.md` if it exists — check for patterns from
-   prior v1 reflections that should be migrated to insights.
-
 5. Assign confidence to each new insight:
    - **HIGH** — seen in 2+ sessions, or 3+ retries, or promoted from MEDIUM
    - **MEDIUM** — seen once but caused failure or major time sink
@@ -256,10 +253,6 @@ Read the relevant format templates from the `templates/` directory.
 
 **Update the index:**
 - Update `.reflect/index.md` with new sessions, decisions, and insights.
-
-**Backward compatibility:**
-- Also write the reflection to `.claude/reflections.md` using the format from
-  `templates/reflection-format.md` (insert at top, after header).
 
 ### Step 6: Regenerate Context
 
@@ -572,7 +565,6 @@ set of files. Output goes to stdout, not to `context.md`.
 - Focus on actionable insights, not statistics for statistics' sake
 - If no meaningful patterns emerge, say so — don't fabricate insights
 - Don't duplicate insights already in CLAUDE.md or agent Project-Specific Rules
-- Keep reflections.md entries concise — quality over quantity
 - When updating existing knowledge artifacts, preserve existing content and merge
 - Always regenerate context.md after an analysis run
 - Template files are in the same directory as this SKILL.md — read them at runtime
