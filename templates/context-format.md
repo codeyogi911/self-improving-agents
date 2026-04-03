@@ -17,7 +17,11 @@ human-owned CLAUDE.md, never replaces it.
 6. **Full rewrite**: This file is regenerated from scratch each time — never appended to.
 7. **Generated overlay, not source of truth**: This file is a computed view derived from typed records in `.reflect/`. It is NOT a human-authored instruction file. CLAUDE.md is the human-owned constitution — context.md MUST NEVER contradict, override, or weaken any rule in CLAUDE.md.
 8. **Constitution precedence**: If an insight or pattern in context.md conflicts with a rule in CLAUDE.md, the CLAUDE.md rule wins unconditionally. The conflicting context.md entry should be dropped during generation rather than included with conflicting guidance.
-9. **Confidence and expiry metadata**: Every entry in Active Rules must include its confidence level and an approximate expiry date (the date when its freshness score will drop below the threshold). This lets readers judge how trustworthy and how temporary each entry is.
+9. **Human-readable staleness**: Every entry in Active Rules must include a staleness tier with a human-readable action cue. Tiers based on freshness score:
+   - **fresh** (freshness > 0.7): "confirmed N days ago" — no action cue needed
+   - **aging** (freshness 0.3–0.7): "last confirmed N days ago — verify before relying on this"
+   - **fading** (freshness < 0.3 but still included): "last confirmed N days ago — verify against current code before using"
+   Human-readable cues empirically outperform raw dates because they trigger verification behavior rather than requiring mental arithmetic.
 
 ## Output Format
 
@@ -32,8 +36,10 @@ human-owned CLAUDE.md, never replaces it.
 
 ## Active Rules
 <!-- HIGH confidence insights, sorted by freshness descending -->
-- <Actionable rule from insight> (confidence: <HIGH|MEDIUM>, seen <N>x, last: <YYYY-MM-DD>, expires: ~<YYYY-MM-DD>)
-- <Another rule> (confidence: <HIGH|MEDIUM>, seen <N>x, last: <YYYY-MM-DD>, expires: ~<YYYY-MM-DD>)
+<!-- Staleness tiers: fresh (>0.7), aging (0.3-0.7), fading (<0.3) -->
+- <Actionable rule> (HIGH, 3x) — fresh, confirmed 2 days ago
+- <Another rule> (MEDIUM, 2x) — aging, last confirmed 45 days ago — verify before relying on this
+- <Older rule> (HIGH, 5x) — fading, last confirmed 89 days ago — verify against current code before using
 
 ## Key Decisions
 <!-- Accepted decisions, most recent first -->

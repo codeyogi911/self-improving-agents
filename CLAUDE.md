@@ -16,6 +16,7 @@ A Claude Code skill called `/reflect` — portable, repo-owned memory for AI cod
 - `templates/insight-format.md` — format for insights in `.reflect/insights/`
 - `templates/file-knowledge-format.md` — format for file knowledge maps in `.reflect/files/`
 - `templates/context-format.md` — rules for generating `.reflect/context.md`
+- `hooks/session-start.sh` — SessionStart hook for new-session reminders
 - `README.md` — installation and usage docs
 - `CLAUDE.md` — this file
 - `evals/evals.json` — skill evaluation test cases
@@ -29,6 +30,7 @@ A Claude Code skill called `/reflect` — portable, repo-owned memory for AI cod
   mkdir -p ~/.claude/skills/reflect
   ln -sf $(pwd)/SKILL.md ~/.claude/skills/reflect/SKILL.md
   ln -sf $(pwd)/templates ~/.claude/skills/reflect/templates
+  ln -sf $(pwd)/hooks ~/.claude/skills/reflect/hooks
   ```
 - Invoke with `/reflect` in any project with Entire CLI sessions to test
 - The skill reads templates at runtime, so changes to templates/ take effect immediately when symlinked
