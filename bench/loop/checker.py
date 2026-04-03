@@ -147,8 +147,8 @@ Evaluate the response and return your JSON verdict."""
         )
 
 
-def _call_claude_checker(prompt: str, system_prompt: str, model: str, max_tokens: int) -> dict:
-    """Call claude CLI in print mode, piping prompt via stdin."""
+def _call_claude_checker(prompt: str, system_prompt: str, model: str, max_tokens: int, retries: int = 1) -> dict:
+    """Call claude CLI in print mode, piping prompt via stdin. Retries on transient errors."""
     cmd = [
         "claude", "-p",
         "--model", model,
@@ -158,41 +158,53 @@ def _call_claude_checker(prompt: str, system_prompt: str, model: str, max_tokens
         "--system-prompt", system_prompt,
     ]
 
-    try:
-        result = subprocess.run(
-            cmd,
-            input=prompt,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-    except subprocess.TimeoutExpired:
-        return {"output": "[timeout]", "usage": TokenUsage(), "cost_usd": 0.0}
+    for attempt in range(1 + retries):
+        try:
+            result = subprocess.run(
+                cmd,
+                input=prompt,
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+        except subprocess.TimeoutExpired:
+            if attempt < retries:
+                print(f"      [checker] timeout, retrying ({attempt+1}/{retries})...")
+                continue
+            return {"output": "[ERROR: timeout]", "usage": TokenUsage(), "cost_usd": 0.0}
 
-    # Claude CLI returns JSON even on errors — always try to parse stdout
-    try:
-        data = json.loads(result.stdout)
-    except (json.JSONDecodeError, TypeError):
-        return {
-            "output": f"[CLI error rc={result.returncode}: {result.stderr[:300]} | stdout: {(result.stdout or '')[:300]}]",
-            "usage": TokenUsage(),
-            "cost_usd": 0.0,
-        }
+        try:
+            data = json.loads(result.stdout)
+        except (json.JSONDecodeError, TypeError):
+            if attempt < retries:
+                print(f"      [checker] JSON parse error, retrying ({attempt+1}/{retries})...")
+                continue
+            return {
+                "output": f"[ERROR: CLI rc={result.returncode}: {result.stderr[:200]}]",
+                "usage": TokenUsage(),
+                "cost_usd": 0.0,
+            }
 
-    if data.get("is_error"):
-        return {
-            "output": f"[CLI error: {data.get('result', 'unknown')}]",
-            "usage": TokenUsage(),
-            "cost_usd": 0.0,
-        }
+        if data.get("is_error"):
+            if attempt < retries:
+                print(f"      [checker] CLI error, retrying ({attempt+1}/{retries})...")
+                continue
+            return {
+                "output": f"[ERROR: {data.get('result', 'unknown')}]",
+                "usage": TokenUsage(),
+                "cost_usd": 0.0,
+            }
 
-    output = data.get("result", "")
-    cost = data.get("total_cost_usd", 0.0)
+        # Success
+        output = data.get("result", "")
+        cost = data.get("total_cost_usd", 0.0)
 
-    usage = TokenUsage()
-    model_usage = data.get("modelUsage", {})
-    for model_key, mu in model_usage.items():
-        usage.input_tokens += mu.get("inputTokens", 0) + mu.get("cacheReadInputTokens", 0)
-        usage.output_tokens += mu.get("outputTokens", 0)
+        usage = TokenUsage()
+        model_usage = data.get("modelUsage", {})
+        for model_key, mu in model_usage.items():
+            usage.input_tokens += mu.get("inputTokens", 0) + mu.get("cacheReadInputTokens", 0)
+            usage.output_tokens += mu.get("outputTokens", 0)
 
-    return {"output": output, "usage": usage, "cost_usd": cost}
+        return {"output": output, "usage": usage, "cost_usd": cost}
+
+    return {"output": "[ERROR: all retries exhausted]", "usage": TokenUsage(), "cost_usd": 0.0}

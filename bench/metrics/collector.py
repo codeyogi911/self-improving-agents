@@ -6,7 +6,9 @@ from ..config import TaskResult
 
 
 class MetricsCollector:
-    def __init__(self):
+    def __init__(self, label_a: str = "v3", label_b: str = "v4"):
+        self.label_a = label_a
+        self.label_b = label_b
         self.results: list[TaskResult] = []
 
     def add(self, result: TaskResult):
@@ -42,7 +44,7 @@ class MetricsCollector:
         results = self._by_version(version)
         by_type = {}
         for r in results:
-            # Extract task type from task_id prefix (e.g., "why-001" -> "why_query")
+            # Extract task type from task_id prefix (e.g., "why-001" -> "why")
             task_type = r.task_id.split("-")[0]
             by_type.setdefault(task_type, []).append(r)
 
@@ -58,56 +60,57 @@ class MetricsCollector:
         return stats
 
     def _per_task_comparison(self) -> list[dict]:
-        """Compare v3 vs v4 for each task."""
-        v3_map = {r.task_id: r for r in self._by_version("v3")}
-        v4_map = {r.task_id: r for r in self._by_version("v4")}
+        """Compare label_a vs label_b for each task."""
+        a_map = {r.task_id: r for r in self._by_version(self.label_a)}
+        b_map = {r.task_id: r for r in self._by_version(self.label_b)}
 
         comparisons = []
-        for task_id in v3_map:
-            v3 = v3_map[task_id]
-            v4 = v4_map.get(task_id)
-            if not v4:
+        for task_id in a_map:
+            a = a_map[task_id]
+            b = b_map.get(task_id)
+            if not b:
                 continue
 
-            v3_score = v3.final_score.weighted_score if v3.final_score else 0
-            v4_score = v4.final_score.weighted_score if v4.final_score else 0
+            a_score = a.final_score.weighted_score if a.final_score else 0
+            b_score = b.final_score.weighted_score if b.final_score else 0
 
-            if v4_score > v3_score:
-                winner = "v4"
-            elif v3_score > v4_score:
-                winner = "v3"
+            if b_score > a_score:
+                winner = self.label_b
+            elif a_score > b_score:
+                winner = self.label_a
             else:
                 winner = "tie"
 
             comparisons.append({
                 "task_id": task_id,
-                "v3_rounds": v3.num_rounds,
-                "v4_rounds": v4.num_rounds,
-                "v3_score": round(v3_score, 2),
-                "v4_score": round(v4_score, 2),
-                "v3_converged": v3.converged,
-                "v4_converged": v4.converged,
-                "v3_gt_coverage": round(v3.ground_truth_coverage, 2),
-                "v4_gt_coverage": round(v4.ground_truth_coverage, 2),
-                "v3_context_chars": v3.context_size_chars,
-                "v4_context_chars": v4.context_size_chars,
-                "v3_cost": round(v3.total_cost, 4),
-                "v4_cost": round(v4.total_cost, 4),
+                f"{self.label_a}_rounds": a.num_rounds,
+                f"{self.label_b}_rounds": b.num_rounds,
+                f"{self.label_a}_score": round(a_score, 2),
+                f"{self.label_b}_score": round(b_score, 2),
+                f"{self.label_a}_converged": a.converged,
+                f"{self.label_b}_converged": b.converged,
+                f"{self.label_a}_gt_coverage": round(a.ground_truth_coverage, 2),
+                f"{self.label_b}_gt_coverage": round(b.ground_truth_coverage, 2),
+                f"{self.label_a}_context_chars": a.context_size_chars,
+                f"{self.label_b}_context_chars": b.context_size_chars,
+                f"{self.label_a}_cost": round(a.total_cost, 4),
+                f"{self.label_b}_cost": round(b.total_cost, 4),
                 "winner": winner,
             })
         return comparisons
 
     def summary(self) -> dict:
         comparisons = self._per_task_comparison()
-        wins = {"v3": 0, "v4": 0, "tie": 0}
+        wins = {self.label_a: 0, self.label_b: 0, "tie": 0}
         for c in comparisons:
             wins[c["winner"]] += 1
 
         return {
-            "v3": self._version_stats("v3"),
-            "v4": self._version_stats("v4"),
-            "v3_by_type": self._by_task_type("v3"),
-            "v4_by_type": self._by_task_type("v4"),
+            "labels": [self.label_a, self.label_b],
+            self.label_a: self._version_stats(self.label_a),
+            self.label_b: self._version_stats(self.label_b),
+            f"{self.label_a}_by_type": self._by_task_type(self.label_a),
+            f"{self.label_b}_by_type": self._by_task_type(self.label_b),
             "per_task": comparisons,
             "wins": wins,
         }

@@ -1,0 +1,205 @@
+{
+  "tasks": [
+    {
+      "id": "self-why-001",
+      "type": "why_query",
+      "title": "Why does the harness use list-based subprocess.run instead of shell=True?",
+      "prompt": "In harness/default.py, all subprocess.run calls use list-based commands (e.g., ['git', 'log', ...]) rather than shell=True with string commands. Why was this changed? What security vulnerability did the original approach have? Reference the specific commit and attack vector.",
+      "ground_truth_signals": [
+        "shell injection",
+        "checkpoint IDs",
+        "shell=True",
+        "list-based",
+        "shutil.which",
+        "8d16987"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["harness/default.py"],
+      "tags": ["security", "harness", "subprocess"]
+    },
+    {
+      "id": "self-why-002",
+      "type": "why_query",
+      "title": "Why did v4 abandon structured artifacts for zero storage?",
+      "prompt": "Reflect v3 stored sessions/, decisions/, and insights/ directories with structured Markdown artifacts. v4 removed all of this in favor of a harness that reads evidence on demand. Why was this decision made? What problems did the v3 approach have? Reference the research that influenced this.",
+      "ground_truth_signals": [
+        "Meta-Harness paper",
+        "staleness",
+        "zero storage",
+        "raw evidence",
+        "on demand",
+        "replaceable harness"
+      ],
+      "difficulty": "hard",
+      "relevant_files": ["harness/default.py", "SPEC.md"],
+      "tags": ["architecture", "v4", "harness"]
+    },
+    {
+      "id": "self-why-003",
+      "type": "why_query",
+      "title": "Why were MIGRATION-PLAN.md and BENCHMARKING.md removed?",
+      "prompt": "The v4 PR initially included MIGRATION-PLAN.md and BENCHMARKING.md files. These were removed in a follow-up fix commit. Why were they removed? Where does that content live instead?",
+      "ground_truth_signals": [
+        "internal planning docs",
+        "PR #4 description",
+        "don't belong in the repo",
+        "8d16987"
+      ],
+      "difficulty": "easy",
+      "relevant_files": ["CLAUDE.md"],
+      "tags": ["cleanup", "documentation"]
+    },
+    {
+      "id": "self-why-004",
+      "type": "why_query",
+      "title": "Why does the benchmark use claude CLI instead of the Anthropic API SDK?",
+      "prompt": "The maker-checker benchmark in bench/ calls the claude CLI tool via subprocess rather than using the Anthropic Python SDK directly. What was the rationale for this design choice? What practical advantage does it provide?",
+      "ground_truth_signals": [
+        "claude CLI",
+        "auth",
+        "no API key management",
+        "existing Claude Code auth",
+        "subprocess"
+      ],
+      "difficulty": "easy",
+      "relevant_files": ["bench/loop/maker.py", "bench/README.md"],
+      "tags": ["benchmark", "design"]
+    },
+    {
+      "id": "self-code-001",
+      "type": "code_modification",
+      "title": "Add a new 'reflect history' CLI command",
+      "prompt": "Add a new CLI command 'reflect history' that shows the last N commits with their associated Entire checkpoint IDs (if any). Follow the existing pattern used by other commands in lib/ (like status.py and why.py). Show the command registration in lib/__init__.py and the implementation.",
+      "ground_truth_signals": [
+        "lib/",
+        "cmd_history",
+        "Entire-Checkpoint",
+        "git log",
+        "argparse",
+        "subparsers"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["lib/__init__.py", "lib/status.py", "lib/why.py"],
+      "tags": ["code", "cli", "command"]
+    },
+    {
+      "id": "self-code-002",
+      "type": "code_modification",
+      "title": "Add a correction deduplication improvement to the harness",
+      "prompt": "The default harness in harness/default.py extracts corrections from transcripts (lines starting with 'no,', 'actually,', etc.). Currently it deduplicates by the user_said prefix. Improve the deduplication to also merge corrections that refer to the same file path. Show the modified extraction code.",
+      "ground_truth_signals": [
+        "CORRECTION_PREFIXES",
+        "user_said",
+        "dedup",
+        "file path",
+        "corrections",
+        "harness/default.py"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["harness/default.py"],
+      "tags": ["code", "harness", "corrections"]
+    },
+    {
+      "id": "self-debug-001",
+      "type": "debugging",
+      "title": "Diagnose benchmark maker failing with OS argument limit",
+      "prompt": "When running the maker-checker benchmark, the maker agent fails silently — the subprocess returns an error but no useful output. The task prompts are long (several KB of context). What is the likely root cause? How was this fixed in the benchmark code? Walk through the diagnosis.",
+      "ground_truth_signals": [
+        "stdin",
+        "OS limits",
+        "argument length",
+        "pipe via stdin",
+        "subprocess.run input",
+        "e79ac6e"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["bench/loop/maker.py"],
+      "tags": ["debugging", "benchmark", "subprocess"]
+    },
+    {
+      "id": "self-debug-002",
+      "type": "debugging",
+      "title": "Diagnose reflect context generating empty output",
+      "prompt": "A user runs 'reflect context' and gets an empty context.md with just the header 'No evidence sources found'. They have git history and Entire CLI installed. What are the diagnostic steps? What common issues cause this? Consider: Entire availability, checkpoint count, harness execution, and permissions.",
+      "ground_truth_signals": [
+        "entire explain",
+        "shutil.which",
+        "entire",
+        "harness",
+        "executable",
+        "reflect status"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["harness/default.py", "lib/status.py"],
+      "tags": ["debugging", "harness", "context"]
+    },
+    {
+      "id": "self-debug-003",
+      "type": "debugging",
+      "title": "Diagnose benchmark checker returning parse failures",
+      "prompt": "The benchmark checker agent keeps returning 'Parse failure' with scores of (2,2,2,2). The checker is supposed to return structured JSON. What causes this? How does the checker.py handle malformed output? What model or prompt issues could trigger this?",
+      "ground_truth_signals": [
+        "JSON",
+        "markdown fences",
+        "parse",
+        "strip",
+        "CHECKER_SYSTEM_PROMPT",
+        "--tools"
+      ],
+      "difficulty": "hard",
+      "relevant_files": ["bench/loop/checker.py"],
+      "tags": ["debugging", "benchmark", "checker"]
+    },
+    {
+      "id": "self-arch-001",
+      "type": "architectural_reasoning",
+      "title": "Evaluate adding LLM-powered summarization to the harness",
+      "prompt": "The current default harness extracts signals from transcripts using regex and heuristics. Evaluate adding an optional LLM call to summarize transcripts into higher-quality decisions and insights. Consider: cost per context generation, latency, API key requirements, the Meta-Harness paper's finding that raw evidence outperforms summaries, and the project's zero-dependency philosophy.",
+      "ground_truth_signals": [
+        "Meta-Harness",
+        "raw evidence outperforms summaries",
+        "cost",
+        "latency",
+        "API key",
+        "zero-dependency"
+      ],
+      "difficulty": "hard",
+      "relevant_files": ["harness/default.py", "ROADMAP.md"],
+      "tags": ["architecture", "harness", "llm"]
+    },
+    {
+      "id": "self-arch-002",
+      "type": "architectural_reasoning",
+      "title": "Evaluate the two read paths design (passive vs active)",
+      "prompt": "Reflect has two distinct read paths: passive (reflect context → pre-computed briefing with line budget) and active (reflect why → raw evidence dump with no budget). Evaluate this design. Why not just have one path? What are the trade-offs? When would a single unified path be better?",
+      "ground_truth_signals": [
+        "passive",
+        "active",
+        "line budget",
+        "context.md",
+        "reflect why",
+        "pre-session orientation"
+      ],
+      "difficulty": "hard",
+      "relevant_files": ["lib/context.py", "lib/why.py", "SPEC.md"],
+      "tags": ["architecture", "read-paths", "design"]
+    },
+    {
+      "id": "self-arch-003",
+      "type": "architectural_reasoning",
+      "title": "Evaluate the scope narrowing decisions from adversarial review",
+      "prompt": "After an adversarial review, reflect's scope was significantly narrowed: file maps were downgraded from 'core pillar' to 'best-effort cache', context.md was repositioned as a supplement (not replacement) for CLAUDE.md, and features like decay models and confidence levels were removed. Evaluate whether these scope reductions were the right call. What would you gain back by reintroducing any of them?",
+      "ground_truth_signals": [
+        "adversarial review",
+        "file maps",
+        "CLAUDE.md always wins",
+        "decay model",
+        "confidence levels",
+        "scope"
+      ],
+      "difficulty": "hard",
+      "relevant_files": ["CLAUDE.md", "SPEC.md"],
+      "tags": ["architecture", "scope", "review"]
+    }
+  ]
+}

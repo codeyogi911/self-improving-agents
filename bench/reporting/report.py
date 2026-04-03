@@ -4,19 +4,22 @@ from ..config import BenchmarkConfig
 
 
 def generate_report(summary: dict, config: BenchmarkConfig) -> str:
+    labels = summary.get("labels", ["v3", "v4"])
+    la, lb = labels[0], labels[1]
+
     lines = []
-    lines.append(f"# Reflect Benchmark: v3 vs v4")
+    lines.append(f"# Reflect Benchmark: {la} vs {lb}")
     lines.append(f"<!-- Run: {config.run_id} | Model: {config.maker_model} | Max rounds: {config.max_rounds} -->")
     lines.append("")
 
-    v3 = summary.get("v3", {})
-    v4 = summary.get("v4", {})
+    a_stats = summary.get(la, {})
+    b_stats = summary.get(lb, {})
     wins = summary.get("wins", {})
 
     # Summary table
     lines.append("## Summary")
     lines.append("")
-    lines.append("| Metric | v3 | v4 | Delta | Winner |")
+    lines.append(f"| Metric | {la} | {lb} | Delta | Winner |")
     lines.append("|--------|-----|-----|-------|--------|")
 
     metrics = [
@@ -29,39 +32,39 @@ def generate_report(summary: dict, config: BenchmarkConfig) -> str:
     ]
 
     for label, key, higher_is_better in metrics:
-        v3_val = v3.get(key, 0)
-        v4_val = v4.get(key, 0)
-        delta = v4_val - v3_val
+        a_val = a_stats.get(key, 0)
+        b_val = b_stats.get(key, 0)
+        delta = b_val - a_val
         delta_str = f"+{delta:.2f}" if delta > 0 else f"{delta:.2f}"
 
         if higher_is_better:
-            winner = "v4" if v4_val > v3_val else "v3" if v3_val > v4_val else "tie"
+            winner = lb if b_val > a_val else la if a_val > b_val else "tie"
         else:
-            winner = "v4" if v4_val < v3_val else "v3" if v3_val < v4_val else "tie"
+            winner = lb if b_val < a_val else la if a_val < b_val else "tie"
 
-        lines.append(f"| {label} | {v3_val} | {v4_val} | {delta_str} | **{winner}** |")
+        lines.append(f"| {label} | {a_val} | {b_val} | {delta_str} | **{winner}** |")
 
     lines.append("")
-    lines.append(f"**Win/Loss/Tie**: v3={wins.get('v3', 0)} / v4={wins.get('v4', 0)} / tie={wins.get('tie', 0)}")
+    lines.append(f"**Win/Loss/Tie**: {la}={wins.get(la, 0)} / {lb}={wins.get(lb, 0)} / tie={wins.get('tie', 0)}")
     lines.append("")
 
     # By task type
-    v3_types = summary.get("v3_by_type", {})
-    v4_types = summary.get("v4_by_type", {})
-    all_types = sorted(set(list(v3_types.keys()) + list(v4_types.keys())))
+    a_types = summary.get(f"{la}_by_type", {})
+    b_types = summary.get(f"{lb}_by_type", {})
+    all_types = sorted(set(list(a_types.keys()) + list(b_types.keys())))
 
     if all_types:
         lines.append("## By Task Type")
         lines.append("")
-        lines.append("| Type | v3 score | v4 score | v3 rounds | v4 rounds |")
+        lines.append(f"| Type | {la} score | {lb} score | {la} rounds | {lb} rounds |")
         lines.append("|------|----------|----------|-----------|-----------|")
 
         for t in all_types:
-            v3t = v3_types.get(t, {})
-            v4t = v4_types.get(t, {})
+            at = a_types.get(t, {})
+            bt = b_types.get(t, {})
             lines.append(
-                f"| {t} | {v3t.get('mean_score', '-')} | {v4t.get('mean_score', '-')} "
-                f"| {v3t.get('mean_rounds', '-')} | {v4t.get('mean_rounds', '-')} |"
+                f"| {t} | {at.get('mean_score', '-')} | {bt.get('mean_score', '-')} "
+                f"| {at.get('mean_rounds', '-')} | {bt.get('mean_rounds', '-')} |"
             )
         lines.append("")
 
@@ -70,16 +73,16 @@ def generate_report(summary: dict, config: BenchmarkConfig) -> str:
     if per_task:
         lines.append("## Per-Task Detail")
         lines.append("")
-        lines.append("| Task | v3 score | v4 score | v3 rounds | v4 rounds | v3 conv | v4 conv | GT v3 | GT v4 | Winner |")
+        lines.append(f"| Task | {la} score | {lb} score | {la} rounds | {lb} rounds | {la} conv | {lb} conv | GT {la} | GT {lb} | Winner |")
         lines.append("|------|----------|----------|-----------|-----------|---------|---------|-------|-------|--------|")
 
         for t in per_task:
             lines.append(
                 f"| {t['task_id']} "
-                f"| {t['v3_score']} | {t['v4_score']} "
-                f"| {t['v3_rounds']} | {t['v4_rounds']} "
-                f"| {'Y' if t['v3_converged'] else 'N'} | {'Y' if t['v4_converged'] else 'N'} "
-                f"| {t['v3_gt_coverage']} | {t['v4_gt_coverage']} "
+                f"| {t.get(f'{la}_score', '-')} | {t.get(f'{lb}_score', '-')} "
+                f"| {t.get(f'{la}_rounds', '-')} | {t.get(f'{lb}_rounds', '-')} "
+                f"| {'Y' if t.get(f'{la}_converged') else 'N'} | {'Y' if t.get(f'{lb}_converged') else 'N'} "
+                f"| {t.get(f'{la}_gt_coverage', '-')} | {t.get(f'{lb}_gt_coverage', '-')} "
                 f"| **{t['winner']}** |"
             )
         lines.append("")
@@ -88,24 +91,24 @@ def generate_report(summary: dict, config: BenchmarkConfig) -> str:
     if per_task:
         lines.append("## Context Sizes")
         lines.append("")
-        lines.append("| Task | v3 chars | v4 chars | Ratio |")
+        lines.append(f"| Task | {la} chars | {lb} chars | Ratio |")
         lines.append("|------|----------|----------|-------|")
         for t in per_task:
-            v3c = t["v3_context_chars"]
-            v4c = t["v4_context_chars"]
-            ratio = f"{v4c / v3c:.1f}x" if v3c > 0 else "n/a"
-            lines.append(f"| {t['task_id']} | {v3c:,} | {v4c:,} | {ratio} |")
+            ac = t.get(f"{la}_context_chars", 0)
+            bc = t.get(f"{lb}_context_chars", 0)
+            ratio = f"{bc / ac:.1f}x" if ac > 0 else "n/a"
+            lines.append(f"| {t['task_id']} | {ac:,} | {bc:,} | {ratio} |")
         lines.append("")
 
     # Cost breakdown
     if per_task:
         lines.append("## Cost Breakdown")
         lines.append("")
-        v3_total = sum(t["v3_cost"] for t in per_task)
-        v4_total = sum(t["v4_cost"] for t in per_task)
-        lines.append(f"- **v3 total**: ${v3_total:.4f}")
-        lines.append(f"- **v4 total**: ${v4_total:.4f}")
-        lines.append(f"- **Combined**: ${v3_total + v4_total:.4f}")
+        a_total = sum(t.get(f"{la}_cost", 0) for t in per_task)
+        b_total = sum(t.get(f"{lb}_cost", 0) for t in per_task)
+        lines.append(f"- **{la} total**: ${a_total:.4f}")
+        lines.append(f"- **{lb} total**: ${b_total:.4f}")
+        lines.append(f"- **Combined**: ${a_total + b_total:.4f}")
         lines.append("")
 
     return "\n".join(lines)

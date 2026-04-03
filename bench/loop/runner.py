@@ -1,6 +1,8 @@
 """Loop runner — orchestrates the maker-checker iteration cycle."""
 
-from ..config import BenchmarkConfig, Round, Task, TaskResult
+import sys
+
+from ..config import BenchmarkConfig, CheckerScores, Round, Task, TaskResult, TokenUsage
 from ..context.provider import ContextProvider
 from .checker import CheckerAgent
 from .maker import MakerAgent
@@ -22,10 +24,34 @@ class LoopRunner:
         rounds = []
         feedback = None
         previous = None
+        valid_count = 0  # Only count non-error rounds against max_rounds
 
-        for round_num in range(1, self.config.max_rounds + 1):
+        for round_num in range(1, self.config.max_rounds + 2):  # +2 to allow 1 error retry
+            if valid_count >= self.config.max_rounds:
+                break
+
             # Maker attempt
             maker_resp = self.maker.attempt(task, context, feedback, previous)
+
+            if maker_resp.is_error:
+                print(f"    Round {round_num}: MAKER ERROR — {maker_resp.output[:100]}", file=sys.stderr)
+                # Record the error round but don't count it or feed it forward
+                rounds.append(Round(
+                    round_num=round_num,
+                    maker_output=maker_resp.output,
+                    checker_verdict="error",
+                    checker_scores=CheckerScores(),
+                    checker_feedback="Maker returned an error — skipping checker.",
+                    checker_rationale="error",
+                    ground_truth_hits=[],
+                    ground_truth_misses=task.ground_truth_signals,
+                    maker_usage=maker_resp.usage,
+                    checker_usage=TokenUsage(),
+                    maker_cost_usd=maker_resp.cost_usd,
+                    checker_cost_usd=0.0,
+                ))
+                continue  # Try again next round (don't update feedback/previous)
+
             print(f"    Round {round_num}: maker done ({maker_resp.usage.total} tokens, ${maker_resp.cost_usd:.4f})")
 
             # Checker evaluation
@@ -54,6 +80,8 @@ class LoopRunner:
                 maker_cost_usd=maker_resp.cost_usd,
                 checker_cost_usd=checker_resp.cost_usd,
             ))
+
+            valid_count += 1
 
             if checker_resp.verdict == "accept":
                 break

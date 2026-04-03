@@ -133,16 +133,31 @@ class TaskResult:
     context_size_chars: int
 
     @property
+    def _valid_rounds(self) -> list[Round]:
+        """Rounds where both maker and checker succeeded (no CLI errors)."""
+        return [r for r in self.rounds if r.checker_verdict != "error"]
+
+    @property
     def converged(self) -> bool:
-        return bool(self.rounds) and self.rounds[-1].checker_verdict == "accept"
+        valid = self._valid_rounds
+        return bool(valid) and valid[-1].checker_verdict == "accept"
 
     @property
     def num_rounds(self) -> int:
         return len(self.rounds)
 
     @property
+    def error_rounds(self) -> int:
+        return sum(1 for r in self.rounds if r.checker_verdict == "error")
+
+    @property
     def final_score(self) -> Optional[CheckerScores]:
-        return self.rounds[-1].checker_scores if self.rounds else None
+        """Best valid score (not last — avoids CLI errors poisoning results)."""
+        valid = self._valid_rounds
+        if not valid:
+            return self.rounds[-1].checker_scores if self.rounds else None
+        # Use the best scoring valid round
+        return max(valid, key=lambda r: r.checker_scores.weighted_score).checker_scores
 
     @property
     def total_cost(self) -> float:
@@ -150,9 +165,14 @@ class TaskResult:
 
     @property
     def ground_truth_coverage(self) -> float:
-        if not self.rounds:
-            return 0.0
-        last = self.rounds[-1]
+        """Coverage from the best valid round (consistent with final_score)."""
+        valid = self._valid_rounds
+        if not valid:
+            if not self.rounds:
+                return 0.0
+            last = self.rounds[-1]
+        else:
+            last = max(valid, key=lambda r: r.checker_scores.weighted_score)
         total = len(last.ground_truth_hits) + len(last.ground_truth_misses)
         return len(last.ground_truth_hits) / total if total else 0.0
 

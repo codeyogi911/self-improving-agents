@@ -1,4 +1,9 @@
-"""Context providers — inject v3 or v4 context for the maker LLM."""
+"""Context providers — inject context for the maker LLM.
+
+Supports two benchmark modes:
+  1. v3 vs v4: compare old structured artifacts against new harness (external repo)
+  2. with-reflect vs without-reflect: measure whether reflect helps at all (self-bench)
+"""
 
 import subprocess
 from abc import ABC, abstractmethod
@@ -144,6 +149,132 @@ class V4ContextProvider(ContextProvider):
                 text=True,
                 timeout=30,
                 cwd=self.target_repo,
+            )
+            return result.stdout.strip() if result.returncode == 0 else ""
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return ""
+
+
+# ---------------------------------------------------------------------------
+# Self-benchmark providers: with-reflect vs without-reflect
+# ---------------------------------------------------------------------------
+
+class WithoutReflectProvider(ContextProvider):
+    """Baseline — only CLAUDE.md and code structure, no reflect context.
+
+    Simulates a Claude Code session where reflect is NOT installed.
+    The maker gets the project's CLAUDE.md (minus the @.reflect/context.md
+    reference) plus a basic directory listing. No git log — that would
+    give the baseline an unfair advantage on history-dependent tasks.
+    """
+
+    def __init__(self, repo_path: str):
+        self.repo_path = Path(repo_path)
+
+    def get_context(self, task: Task) -> str:
+        parts = []
+
+        # 1. CLAUDE.md (strip the @.reflect/context.md line)
+        claude_md = self.repo_path / "CLAUDE.md"
+        if claude_md.exists():
+            content = claude_md.read_text()
+            lines = [
+                ln for ln in content.splitlines()
+                if "@.reflect/context.md" not in ln
+            ]
+            parts.append("## Project Instructions (CLAUDE.md)\n")
+            parts.append("\n".join(lines))
+
+        # 2. Directory tree (first 2 levels, like a new dev would see)
+        tree = self._get_tree()
+        if tree:
+            parts.append("\n## Repository Structure\n")
+            parts.append(tree)
+
+        if not parts:
+            return "(No project context available)"
+
+        return "\n".join(parts)
+
+    def _get_tree(self) -> str:
+        try:
+            result = subprocess.run(
+                ["find", ".", "-maxdepth", "2", "-not", "-path", "./.git/*",
+                 "-not", "-path", "./.git", "-not", "-name", "__pycache__",
+                 "-not", "-path", "./__pycache__/*"],
+                capture_output=True, text=True, timeout=5,
+                cwd=self.repo_path,
+            )
+            return result.stdout.strip()[:2000] if result.returncode == 0 else ""
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return ""
+
+
+class WithReflectProvider(ContextProvider):
+    """Full reflect context — context.md + targeted why/search queries.
+
+    Simulates a Claude Code session where reflect IS installed and active.
+    """
+
+    def __init__(self, repo_path: str, reflect_bin: str = "python3"):
+        self.repo_path = Path(repo_path)
+        self.reflect_bin = reflect_bin
+        self.reflect_script = str(Path(__file__).parent.parent.parent / "reflect")
+
+    def get_context(self, task: Task) -> str:
+        parts = []
+
+        # 1. CLAUDE.md (strip @.reflect/context.md — we inline it below)
+        claude_md = self.repo_path / "CLAUDE.md"
+        if claude_md.exists():
+            content = claude_md.read_text()
+            lines = [
+                ln for ln in content.splitlines()
+                if "@.reflect/context.md" not in ln
+            ]
+            parts.append("## Project Instructions (CLAUDE.md)\n")
+            parts.append("\n".join(lines))
+
+        # 2. Run reflect context → read the generated context.md
+        self._run_reflect(["context"])
+        context_md = self.repo_path / ".reflect" / "context.md"
+        if context_md.exists():
+            content = context_md.read_text()
+            if content.strip():
+                parts.append("\n## Reflect Context Briefing\n")
+                parts.append(content)
+
+        # 3. reflect why for relevant files
+        for filepath in task.relevant_files[:3]:
+            why_output = self._run_reflect(["why", filepath])
+            if why_output:
+                parts.append(f"\n## Reflect Evidence: {filepath}\n")
+                parts.append(why_output[:3000])
+
+        # 4. reflect search by task tags
+        search_terms = list(task.tags[:2])
+        if not search_terms:
+            words = [w for w in task.title.lower().split() if len(w) > 4]
+            search_terms = words[:1]
+
+        for term in search_terms:
+            search_output = self._run_reflect(["search", term])
+            if search_output:
+                parts.append(f"\n## Reflect Search: '{term}'\n")
+                parts.append(search_output[:2000])
+
+        if not parts:
+            return "(No context available)"
+
+        return "\n".join(parts)
+
+    def _run_reflect(self, args: list[str]) -> str:
+        cmd = [self.reflect_bin, self.reflect_script] + args
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True, text=True, timeout=30,
+                cwd=str(self.repo_path),
             )
             return result.stdout.strip() if result.returncode == 0 else ""
         except (subprocess.TimeoutExpired, FileNotFoundError):

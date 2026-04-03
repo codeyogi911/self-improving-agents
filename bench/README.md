@@ -1,68 +1,86 @@
-# Reflect Benchmark: v3 vs v4
+# Reflect Benchmark
 
-Measures whether v4's raw-evidence-on-demand approach helps an LLM converge
-faster on coding tasks compared to v3's pre-computed summaries.
+Two benchmark modes measuring context quality via a maker-checker loop.
 
-## How it works
+## Modes
+
+### 1. Self-Benchmark: with-reflect vs without-reflect
+
+Measures whether reflect actually helps an LLM work on this repo.
+Uses 12 tasks derived from real development pitfalls in reflect's own history.
 
 ```
-                          tasks.json
-                              |
-                     16 tasks (4 types)
-                              |
-                   +----------+----------+
-                   |                     |
-              v3 context            v4 context
-          (pre-computed)         (on-demand CLI)
-                   |                     |
-                   v                     v
-          +----------------+    +----------------+
-          |                |    |                |
-          |  .reflect/     |    |  reflect why   |
-          |  sessions/     |    |  reflect ctx   |
-          |  decisions/    |    |  reflect search|
-          |  insights/     |    |                |
-          +-------+--------+    +-------+--------+
-                  |                     |
-                  +----------+----------+
-                             |
-                     +-------v-------+
-                     |    MAKER      |
-                     |  claude CLI   |
-                     | (Sonnet 4)    |
-                     +-------+-------+
-                             |
-                        task output
-                             |
-                     +-------v-------+
-                     |   CHECKER     |
-                     |  claude CLI   |
-                     | (Sonnet 4)    |
-                     +-------+-------+
-                             |
-                    accept?--+--revise?
-                      |             |
-                   record      feedback
-                   result      to maker
-                      |             |
-                      v             +-----> loop (max 5 rounds)
-                             |
-                     +-------v-------+
-                     |   METRICS     |
-                     | rounds, score |
-                     | cost, GT cov  |
-                     +-------+-------+
-                             |
-                     +-------v-------+
-                     |    REPORT     |
-                     | summary.json  |
-                     | report.md     |
-                     +---------------+
+  without-reflect                with-reflect
+  +------------------+           +------------------+
+  | CLAUDE.md        |           | CLAUDE.md        |
+  | (no reflect ref) |           | + context.md     |
+  | dir listing      |           | + reflect why    |
+  | git log (10)     |           | + reflect search |
+  +--------+---------+           +--------+---------+
+           |                              |
+           +----------+-------------------+
+                      |
+              +-------v-------+
+              |    MAKER      |
+              |  claude CLI   |
+              +-------+-------+
+                      |
+              +-------v-------+
+              |   CHECKER     |
+              | (no context)  |
+              +-------+-------+
+                      |
+             accept?--+--revise?
+               |             |
+            record       feedback → loop (max 5)
 ```
 
-## The maker-checker loop
+**Hypothesis**: With reflect, the maker gets it right sooner because it has
+access to session history, decision rationale, and pitfall warnings that
+aren't visible from code alone.
 
-Each task runs through an iterative refinement cycle:
+### 2. v3 vs v4 Benchmark
+
+Compares v3's pre-computed artifacts against v4's on-demand harness.
+Uses 16 tasks from an external SAP CAP project. See [original docs](#v3-vs-v4-details) below.
+
+## Quick Start
+
+```bash
+# Self-benchmark: dry run (no API calls, just check context sizes)
+python3 -m bench self-bench --dry-run
+
+# Self-benchmark: full run
+python3 -m bench self-bench
+
+# Self-benchmark: with specific model
+python3 -m bench self-bench --model claude-sonnet-4-6
+
+# List all runs
+python3 -m bench list-runs
+
+# Regenerate report from previous run
+python3 -m bench report --run-id self-2026-04-03_1930
+```
+
+## Self-Benchmark Task Types
+
+```
++---------------------------+-------+------------------------------------------+
+| Type                      | Count | Example                                  |
++---------------------------+-------+------------------------------------------+
+| why_query                 |   4   | Why list-based subprocess, not shell=True|
+| code_modification         |   2   | Add a new CLI command to reflect         |
+| debugging                 |   3   | Diagnose benchmark maker OS arg limits   |
+| architectural_reasoning   |   3   | Evaluate LLM summarization in harness    |
++---------------------------+-------+------------------------------------------+
+```
+
+Each task has `ground_truth_signals` — verifiable keywords the checker uses
+as objective anchors. These are derived from actual commit messages, PR
+descriptions, and development session transcripts.
+
+## The Maker-Checker Loop
 
 ```
 Round 1:  Maker attempts  -->  Checker scores  -->  accept (done)
@@ -77,11 +95,8 @@ Round 2:  Maker revises   -->  Checker scores  -->  accept (done)
 ```
 
 **Primary metric**: rounds to convergence (fewer = better context).
-The hypothesis: better context helps the maker get it right sooner.
 
-## Checker rubric
-
-The checker scores each response on 4 dimensions:
+## Checker Rubric
 
 ```
 +------------------------+--------+----------------------------------+
@@ -96,114 +111,55 @@ The checker scores each response on 4 dimensions:
 Accept when:  weighted_score >= 4.0  AND  no dimension < 3
 ```
 
-The checker does NOT see the project context -- only the maker's output
+The checker does NOT see the project context — only the maker's output
 and ground-truth signal keywords. This prevents echo-chamber bias.
 
-## Task types
+## Output
+
+The report compares the two conditions across all tasks:
 
 ```
-+---------------------------+-------+------------------------------------------+
-| Type                      | Count | Example                                  |
-+---------------------------+-------+------------------------------------------+
-| why_query                 |   4   | Why were XSUAA roles separated?          |
-| code_modification         |   4   | Add error code to LoansetService         |
-| debugging                 |   4   | Diagnose XSUAA deploy validation failure |
-| architectural_reasoning   |   4   | Evaluate migrating JS handler to TS      |
-+---------------------------+-------+------------------------------------------+
+| Metric                  | without-reflect | with-reflect | Delta  | Winner       |
+|-------------------------|-----------------|--------------|--------|--------------|
+| Convergence rate        | 0.58            | 0.83         | +0.25  | with-reflect |
+| Mean rounds             | 3.2             | 1.8          | -1.4   | with-reflect |
+| Mean weighted score     | 3.5             | 4.3          | +0.8   | with-reflect |
+| Mean evidence grounding | 2.8             | 4.1          | +1.3   | with-reflect |
+| Total cost (USD)        | 1.40            | 0.90         | -0.50  | with-reflect |
 ```
 
-Each task carries `ground_truth_signals` -- verifiable keywords the checker
-uses as objective anchors (e.g., `"ROLE_LOANSET"`, `"scanbotsdk"`, `"SELECT.one"`).
+*(Example values — actual results depend on the run.)*
 
-## Context comparison
-
-v3 and v4 provide very different context for the same task:
-
-```
-              v3 (structured)                v4 (raw evidence)
-         +----------------------+       +----------------------+
-         | context.md (curated) |       | context.md (harness) |
-         | sessions/*.md        |       | reflect why <file>   |
-         | decisions/*.md       |       | reflect search <kw>  |
-         | insights/*.md        |       |                      |
-         +----------------------+       +----------------------+
-               ~10-18K chars                  ~2-7K chars
-```
-
-v3 provides more volume (pre-computed artifacts).
-v4 provides targeted evidence (fetched on demand).
-
-## File structure
+## File Structure
 
 ```
 bench/
-  cli.py               CLI: run, report, list-runs
+  cli.py               CLI: run, self-bench, report, list-runs
   config.py            BenchmarkConfig + Task/Round/TaskResult dataclasses
-  compare.py           Legacy static heuristic scorer (predecessor)
+  compare.py           Legacy static heuristic scorer
   tasks/
     registry.py        Load + validate task definitions
-    tasks.json         16 curated tasks with ground_truth_signals
+    tasks.json         16 tasks for v3-vs-v4 (external repo)
+    self_tasks.json    12 tasks for self-bench (this repo)
   context/
-    provider.py        V3ContextProvider (reads artifacts)
-                       V4ContextProvider (invokes reflect CLI)
+    provider.py        V3/V4 + WithReflect/WithoutReflect providers
   loop/
     maker.py           Calls claude CLI with context + task prompt
     checker.py         Calls claude CLI with rubric, returns JSON scores
     runner.py          Orchestrates maker -> checker -> revise loop
   metrics/
-    collector.py       Per-task + aggregate stats, win/loss/tie
+    collector.py       Per-task + aggregate stats, generic labels
   reporting/
     report.py          Generates report.md + summary.json
   results/             (gitignored)
-    <run-id>/
-      run_config.json  Frozen config for reproducibility
-      tasks/           Per-task JSON (all rounds preserved)
-      summary.json     Aggregate metrics
-      report.md        Human-readable comparison
+    <run-id>/          v3-vs-v4 runs
+    self-<run-id>/     self-bench runs
 ```
 
-## Usage
-
-```bash
-# Dry run -- validate tasks, show context sizes, no API calls
-python3 -m bench run \
-  --target-repo /path/to/mymediset_cloud \
-  --v3-reflect /path/to/mymediset_cloud/.reflect \
-  --dry-run
-
-# Full benchmark
-python3 -m bench run \
-  --target-repo /path/to/mymediset_cloud \
-  --v3-reflect /path/to/mymediset_cloud/.reflect \
-  --max-rounds 5
-
-# Regenerate report from a previous run
-python3 -m bench report --run-id 2026-04-03_1712
-
-# List all runs
-python3 -m bench list-runs
-```
-
-## Output
-
-The report compares v3 and v4 across all tasks:
-
-```
-| Metric                  | v3   | v4   | Delta  | Winner |
-|-------------------------|------|------|--------|--------|
-| Convergence rate        | 0.75 | 0.88 | +0.13  | v4     |
-| Mean rounds             | 2.8  | 1.9  | -0.9   | v4     |
-| Mean weighted score     | 3.9  | 4.2  | +0.3   | v4     |
-| Mean evidence grounding | 3.1  | 3.8  | +0.7   | v4     |
-| Total cost (USD)        | 1.20 | 0.85 | -0.35  | v4     |
-```
-
-*(Example values -- actual results depend on the run.)*
-
-## Design decisions
+## Design Decisions
 
 **Why claude CLI, not the API SDK?**
-Runs on existing Claude Code auth -- no API key management needed.
+Runs on existing Claude Code auth — no API key management needed.
 
 **Why the checker has no context?**
 If the checker saw the same context, it would grade based on whether the
@@ -218,3 +174,27 @@ agent self-correct faster with reviewer feedback.
 **Why same model for maker and checker?**
 Eliminates model capability as a confound. We are measuring
 context quality, not model quality.
+
+**Why self-benchmark on this repo?**
+The reflect repo has rich session history (via Entire CLI) and well-documented
+pitfalls from its own development. Using it as the benchmark target means the
+ground truth is verifiable from the actual git history and transcripts.
+
+---
+
+<a id="v3-vs-v4-details"></a>
+## v3 vs v4 Benchmark (Original)
+
+```bash
+# Dry run
+python3 -m bench run \
+  --target-repo /path/to/mymediset_cloud \
+  --v3-reflect /path/to/mymediset_cloud/.reflect \
+  --dry-run
+
+# Full benchmark
+python3 -m bench run \
+  --target-repo /path/to/mymediset_cloud \
+  --v3-reflect /path/to/mymediset_cloud/.reflect \
+  --max-rounds 5
+```
