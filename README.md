@@ -4,108 +4,94 @@
     <strong>git answers "what changed." reflect answers "why."</strong>
   </p>
   <p align="center">
-    Portable, repo-owned memory for AI coding agents.
+    Repo-owned memory for AI coding agents.
   </p>
 </p>
 
 <p align="center">
+  <a href="#the-problem">Problem</a> &middot;
   <a href="#how-it-works">How It Works</a> &middot;
   <a href="#install">Install</a> &middot;
   <a href="#commands">Commands</a> &middot;
-  <a href="#the-evidence-store">Evidence Store</a> &middot;
-  <a href="SPEC.md">Spec</a> &middot;
-  <a href="ROADMAP.md">Roadmap</a>
+  <a href="#the-harness">The Harness</a> &middot;
+  <a href="SPEC.md">Spec</a>
 </p>
 
 ---
 
 ## The Problem
 
-AI agents have memory — but it's trapped.
+Every agent session starts from zero.
 
-Claude's memory lives in `~/.claude/projects/` on your laptop. Cursor's lives somewhere else. Switch machines, switch agents, onboard a teammate — **the memory doesn't travel.**
+A coding agent opens a PR to fix a flaky test. It doesn't know that a different agent tried the same fix last week, that the PR was rejected because it broke a downstream contract, and that the team decided to deprecate the test entirely. So it reopens the same PR.
 
-Decisions get made, approaches get abandoned, lessons get learned. Then the next session starts fresh and makes the same mistakes.
+An agent that resolved 50 incidents has seen patterns — which fixes worked, which caused regressions, which services are fragile after deploys. But that knowledge disappears after every run. The next agent starts fresh.
 
-## The Solution
+This is the **context lake** problem ([Zohar Einy, 2026](https://thenewstack.io/hidden-agentic-technical-debt/)): agents need two kinds of context that most setups don't provide.
 
-**Put the "why" in the repo.**
+**Runtime context** — live data about services, ownership, recent deployments. Static markdown files go stale the moment they're written. Ownership transfers, dependencies change, config values update. The agent doesn't know.
 
-```
-git log       →  what happened
-git blame     →  who changed this line
-git bisect    →  which commit broke it
+**History** — what was tried, why it was decided, what went wrong, what the human corrected, what's still unfinished. Without this, agents repeat mistakes that humans (or other agents) have already resolved. LLM providers are starting to address this with `memory.md` files, but that memory is siloed per tool, per machine, per developer.
 
-reflect why   →  why is it this way
-reflect brief →  what do I need to know for this task
-reflect what-failed → what went wrong before
-```
+Reflect solves this half of the problem at the repo level — not just decisions, but corrections, abandoned approaches, hot areas, open threads, and the full reasoning trail behind the code.
 
-Decisions, failure patterns, and working context — stored as structured Markdown in `.reflect/`, versioned with git, reviewable in PRs, readable by any AI agent or human.
+---
 
-**Claude remembers for Claude. Reflect remembers for the project.**
+## What Reflect Does (and Doesn't)
+
+**Does:**
+- Makes the past queryable — `reflect why` dumps raw evidence from session transcripts and git history so agents (or humans) can find out *why* something is the way it is, what was tried before, and what went wrong
+- Keeps context fresh — a harness script regenerates from live sources on every session start, not from a static file someone wrote weeks ago
+- Travels with the repo — the harness is committed to git, so every clone gets it
+- Works with any AI tool — the output is plain Markdown that gets wired into instruction files (currently Claude Code via `CLAUDE.md`)
+
+**Doesn't:**
+- Replace runtime context from service catalogs, deployment systems, or live infrastructure
+- Work across team members or machines (session history comes from [Entire CLI](https://entire.dev) on the local machine)
+- Provide agent registry, governance, or orchestration
+- Do much without Entire CLI — git history alone gives you commit messages, not the reasoning behind them
+
+**Scope:** Individual developers or small teams sharing a repo. The organizational-scale problems (agent sprawl, credential governance, cross-team coordination) need a different kind of tool.
 
 ---
 
 ## How It Works
 
 ```
-                    ┌─────────────┐
-                    │  Evidence    │
-                    │  Sources     │
-                    └──────┬──────┘
-                           │
-              ┌────────────┼────────────┐
-              │            │            │
-        ┌─────┴─────┐ ┌───┴────┐ ┌────┴─────┐
-        │  Entire    │ │  Git   │ │  Manual  │
-        │  Sessions  │ │ Commits│ │  Entry   │
-        └─────┬─────┘ └───┬────┘ └────┬─────┘
-              │            │           │
-              └────────────┼───────────┘
-                           │
-                    ┌──────▼──────┐
-                    │  reflect    │
-                    │  CLI        │
-                    │  (analyze)  │
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │  .reflect/  │
-                    │  Evidence   │
-                    │  Store      │
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │ context.md  │
-                    │ (briefing)  │
-                    └──────┬──────┘
-                           │
-              ┌────────────┼────────────┐
-              │            │            │
-        ┌─────┴─────┐ ┌───┴────┐ ┌────┴─────┐
-        │ CLAUDE.md │ │.cursor │ │ copilot- │
-        │           │ │ rules  │ │ instruct │
-        └───────────┘ └────────┘ └──────────┘
+Evidence Sources                     reflect
+┌─────────────────────────┐         ┌──────────────────────┐
+│  Entire CLI sessions    │────────>│                      │
+│  (transcripts, intents, │         │   .reflect/harness   │
+│   corrections, decisions)│         │   (replaceable script)│
+│                         │         │                      │
+│  Git history            │────────>│   Reads on demand.   │
+│  (commits, diffs, blame)│         │   No intermediate    │
+│                         │         │   storage.           │
+│  Manual notes           │────────>│                      │
+│  (.reflect/notes/)      │         └──────────┬───────────┘
+└─────────────────────────┘                    │
+                                         context.md
+                                               │
+                                         CLAUDE.md
+                                    (or any instruction file)
 ```
 
-1. **Evidence flows in** — from Entire CLI session transcripts, git commits, or manual entries
-2. **Reflect interprets** — extracts decisions, patterns, and insights
-3. **`.reflect/` stores it** — structured, git-portable, agent-agnostic Markdown
-4. **Context briefing generated** — filtered, prioritized summary of what matters now
-5. **Every AI tool gets it** — auto-wired into `CLAUDE.md` today, with Cursor/Copilot/Windsurf wiring planned
+1. **Evidence already exists** — Entire captures full session transcripts (what the agent did, what the human corrected, what was decided). Git captures commits.
+2. **Harness reads on demand** — no copying, no intermediate storage. The harness is a Python script that fetches evidence and extracts signals: corrections, decisions, hot files, open threads.
+3. **Context briefing generated** — a prioritized Markdown summary wired into the agent's instruction file.
+4. **Active queries bypass the briefing** — `reflect why` dumps raw evidence for the agent to reason over directly. Raw traces outperform summaries ([Meta-Harness, 2026](https://arxiv.org/abs/2603.28052)).
 
----
+### What the harness extracts
 
-## Compatibility
+The default harness reads Entire session transcripts and pulls out:
 
-| Tool | Status | How |
-|------|--------|-----|
-| **Claude Code** (CLI, Desktop, Web) | Supported | Skill loaded from `~/.claude/skills/`, context auto-wired into `CLAUDE.md` |
-| **Cursor** | Planned | Will auto-wire into `.cursor/rules/` |
-| **GitHub Copilot** | Planned | Will auto-wire into `copilot-instructions.md` |
-| **Windsurf** | Planned | Will auto-wire into `.windsurfrules` |
-| **Any AI tool** | Works | Reads `.reflect/context.md` directly |
+- **Corrections** — when a human said "no, not that" or "actually, do X instead"
+- **Key decisions** — intent + commit pairs showing what was tried and what landed
+- **Hot areas** — files touched across multiple sessions (likely complex or unstable)
+- **Open threads** — sessions with intent but no commits (unfinished work)
+- **Current focus** — topic keywords from recent sessions
+
+This is not a git log. It's everything *around* the code — what was considered, what was rejected, what the human corrected, what's still in progress, and where complexity concentrates.
 
 ---
 
@@ -116,213 +102,154 @@ git clone https://github.com/codeyogi911/reflect.git
 cd reflect && ./install.sh
 ```
 
-That's it. Symlinks keep everything up to date — to upgrade, just `git pull`.
+This installs:
+- `reflect` CLI to `~/.local/bin/`
+- `/reflect` skill for Claude Code to `~/.claude/skills/`
 
-### Verify
+Then in any git repo:
+```bash
+reflect init      # creates .reflect/ with default harness
+reflect context   # generates your first context briefing
+```
+
+### Entire CLI (recommended)
+
+Reflect's main value comes from session transcripts captured by [Entire CLI](https://entire.dev). Without it, you get git history only — commit messages, not decision traces.
 
 ```bash
-ls -la ~/.claude/skills/reflect/
-# SKILL.md and templates/ should point to your cloned repo
+# Install Entire CLI separately — see https://entire.dev
+entire enable     # start capturing sessions in this repo
 ```
 
 ---
 
 ## Commands
 
-### Analyze sessions
+### Generate context briefing
 
 ```bash
-/reflect                          # analyze last 5 sessions
-/reflect last 3 sessions          # scope to 3 most recent
-/reflect and bake                 # analyze + bake HIGH insights (with approval)
-/reflect [session-id]             # analyze a specific session
-/reflect auth issues              # find sessions about auth problems
+reflect context                  # run harness, write context.md
 ```
 
-### Query the evidence store
+### Query raw evidence
 
 ```bash
-/reflect why src/auth/middleware.ts    # decision trail for a file
-/reflect brief auth middleware         # task-focused context for current work
-/reflect brief src/auth/               # file-focused context overlay
-/reflect context                       # regenerate the full context briefing
-/reflect what-failed testing           # failure patterns about testing
-/reflect status                        # evidence store dashboard
-/reflect search database               # search all knowledge artifacts
+reflect why src/auth/middleware.ts    # raw session + git evidence about a file
+reflect why "database migration"     # raw evidence about a topic
+reflect search "JWT bug"             # grep across all sources
 ```
 
-### Topic search
+### Manage
 
-Any unrecognized argument is treated as a topic search. Semantic matching means `/reflect auth issues` finds sessions about "JWT refresh bugs" or "login redirect loops."
+```bash
+reflect init                     # set up .reflect/ in current repo
+reflect status                   # show available evidence sources
+reflect note "why we chose postgres" # add a manual note
+```
+
+### Claude Code skill
+
+```bash
+/reflect                         # regenerate context
+/reflect why auth middleware     # evidence + AI narrative
+/reflect search JWT              # search all sources
+/reflect status                  # evidence overview
+/reflect improve                 # analyze harness quality, propose fixes
+```
 
 ---
 
-## The Evidence Store
+## The Harness
 
-After running `/reflect`, your project gets a `.reflect/` directory:
+The harness is the core idea — a replaceable script at `.reflect/harness` that reads raw evidence and generates `context.md`.
+
+### Why a script, not a schema
+
+The [Meta-Harness paper](https://arxiv.org/abs/2603.28052) (Stanford/MIT, 2026) showed that the code determining what context an AI sees matters as much as the model itself. Hand-designed memory structures underperform letting agents search raw evidence.
+
+A static schema can't adapt. A script can:
+- Be customized per repo (a backend service needs different context than a design system)
+- Be A/B tested (run two harnesses against the same evidence, compare results)
+- Self-improve (`/reflect improve` analyzes harness output quality and proposes edits)
+
+### Default harness
+
+Reads Entire CLI + git, ranks by recency, extracts signals (corrections, decisions, hot files, open threads), produces a Markdown briefing. Deliberately simple.
+
+### Custom harness
+
+Replace `.reflect/harness` with any script that follows the contract:
+
+```
+reads: Entire CLI + git + notes (on demand)
+writes: context to stdout
+flags: --max-lines, --format
+```
+
+What a custom harness could do:
+- Use an LLM to summarize sessions before generating context
+- Implement semantic search with embeddings
+- Fetch from additional sources (PRs, CI logs, Slack)
+- Add confidence levels and decay
+
+The harness is committed to git — different repos evolve different harnesses.
+
+---
+
+## Two Read Paths
+
+| Path | Command | How it works |
+|------|---------|-------------|
+| **Passive** | `reflect context` | Runs harness, writes context.md (pre-session briefing) |
+| **Active** | `reflect why <topic>` | Fetches raw evidence, dumps to stdout (agent reasons over it) |
+
+The passive path is a pre-computed summary — good enough for orientation. The active path gives the agent raw evidence when it needs the full story.
+
+---
+
+## `.reflect/` Directory
 
 ```
 .reflect/
-├── index.md              # master lookup table
-├── context.md            # compiled briefing (generated, gitignored)
-├── config.yaml           # optional settings
-│
-├── sessions/             # what happened (evidence)
-│   └── 2026-04-03_abc123.md
-│
-├── decisions/            # what was decided (durable primitives)
-│   └── 0001-use-postgres.md
-│
-├── insights/             # what was learned (patterns that compound)
-│   └── verify-cli-flags.md
-│
-├── files/                # file knowledge cache (convenience index)
-│   └── src--auth--middleware.ts.md
-│
-└── history/              # archived stale artifacts
+├── harness             # the replaceable context-generation script
+├── context.md          # generated briefing (gitignored)
+├── config.yaml         # optional settings
+├── .last_run           # freshness state (gitignored)
+└── notes/              # manual annotations
 ```
 
-**Decisions and insights are the durable primitives.** Sessions are evidence. File maps are a convenience cache. `context.md` is a compiled view — never the source of truth.
+Evidence lives in Entire and git — reflect just reads it. No sessions/, no decisions/, no insights/.
 
-Everything is plain Markdown with YAML frontmatter. Git-friendly. Human-readable. Diffable.
-
-See [`SPEC.md`](SPEC.md) for the full format specification.
-
----
-
-## Context Briefing
-
-The briefing is a filtered, prioritized summary of what the AI needs to know right now.
-
-```markdown
-# Dynamic Project Knowledge
-
-## Active Rules
-- Always check CLI --help before assuming flags (HIGH, 3x) — fresh, confirmed 2 days ago
-- Run migrations after schema changes (MEDIUM, 2x) — aging, last confirmed 45 days ago
-
-## Key Decisions
-- **Use Postgres over Mongo**: ACID compliance required for payment flows (2026-03-15)
-
-## Watch Out
-- Docker compose v1 commands fail silently on CI — use v2 syntax (seen 3x)
-```
-
-### How it stays fresh
-
-- **Temporal insights** decay with a 60-day half-life — stale knowledge drops out automatically
-- **Architectural insights** decay slowly (365-day half-life) — design decisions persist
-- **Contradicted insights** are excluded regardless of freshness
-- **Human-authored rules always win** — `CLAUDE.md` is the constitution, `context.md` is the briefing
-
-### Staleness tiers
-
-Each entry carries a human-readable action cue:
-
-| Tier | Freshness | Cue |
-|------|-----------|-----|
-| **fresh** | > 0.7 | "confirmed 2 days ago" |
-| **aging** | 0.3 – 0.7 | "last confirmed 45 days ago — verify before relying on this" |
-| **fading** | < 0.3 | "last confirmed 89 days ago — verify against current code" |
-
-### Task-focused context
-
-The static briefing covers everything. For focused work, use `/reflect brief`:
-
-```bash
-/reflect brief auth middleware     # only auth-related knowledge
-/reflect brief src/auth/           # only decisions and insights for those files
-```
-
----
-
-## Trust Model
-
-Not all evidence is equal. Every record carries provenance:
-
-| Source | Trust Level | Can inform context.md? | Can be baked into instructions? |
-|--------|------------|------------------------|--------------------------------|
-| Entire session analysis | `verified` | Yes | Yes (with human approval) |
-| Git commits | `inferred` | Yes | No |
-| PR descriptions | `inferred` | Yes | No |
-| Manual entry | `verified` | Yes | Yes (with human approval) |
-
-**Evidence store = open to all sources. Instruction files = human-gated, verified-only.**
-
-Bake-in always requires explicit human approval. No auto-promotion, ever.
-
----
-
-## Session-Start Behavior
-
-A lightweight hook checks for new evidence at the start of each session:
-
-| Mode | Behavior |
-|------|----------|
-| `auto` (default) | Regenerates `context.md` from existing evidence, nudges if new sessions exist |
-| `manual` | Prints a reminder to run `/reflect` |
-
-```yaml
-# .reflect/config.yaml
-session_start: manual  # opt out of auto mode
-```
-
----
-
-## Confidence Levels
-
-| Level | Criteria | What happens |
-|-------|----------|--------------|
-| **HIGH** | Seen in 2+ sessions, or 3+ retries | Surfaced for bake-in approval |
-| **MEDIUM** | Seen once, caused failure or time sink | Logged, promoted on recurrence |
-| **LOW** | Minor or uncertain | Logged for reference |
+See [`SPEC.md`](SPEC.md) for the full specification.
 
 ---
 
 ## FAQ
 
 **Does this work without Entire CLI?**
-Not yet. Entire CLI is currently required for session capture. Git-commit-based evidence capture is on the [roadmap](ROADMAP.md) and will make Entire optional.
+Partially. Git history is always available, so you get commit messages and file history. But the real value — corrections, reasoning, abandoned approaches, open threads — comes from Entire session transcripts.
 
 **Will it modify my code?**
-No. It only writes to `.reflect/` and to `CLAUDE.md` (auto-wires `@.reflect/context.md` on first run). Bake-in to instruction files requires your explicit approval.
+No. It only writes to `.reflect/` and auto-wires `@.reflect/context.md` into `CLAUDE.md` on first run.
 
 **What about `.reflect/` in git?**
-Commit the evidence (sessions, decisions, insights, files, index.md). Gitignore `context.md` — it's regenerated locally.
+Commit: `harness`, `config.yaml`, `notes/`. Gitignore: `context.md`, `.last_run`.
 
-```gitignore
-.reflect/context.md
-```
+**Does this work across team members?**
+Not yet. Session history comes from Entire on the local machine. If two developers both use Entire in the same repo, they each see only their own sessions. Team-scale memory is a future goal, not a current capability.
 
-**What about secrets?**
-Reflect never includes file contents, env values, or credentials. Sensitive data is redacted with `[REDACTED]`.
-
-**Can I edit knowledge artifacts directly?**
-Yes. They're plain Markdown. Reflect respects your changes on the next run.
-
----
-
-## For Tool Authors
-
-The `.reflect/` evidence store is an open format. See [`SPEC.md`](SPEC.md) for the full specification.
-
-A compliant tool can:
-- **Read** from `.reflect/` to give agents project context
-- **Write** to `.reflect/` to capture decisions and patterns
-- **Generate** `context.md` as a compiled briefing
-
-The spec is independent of the `/reflect` skill — it defines the contract for the evidence store itself.
+**How is this different from Claude's built-in memory?**
+Claude's memory lives in `~/.claude/projects/` on your laptop. It doesn't travel with the repo, isn't visible to other tools, and can't be customized. Reflect's harness is committed to git, produces tool-agnostic Markdown, and is a replaceable program you can optimize.
 
 ---
 
 ## Contributing
 
 1. Fork the repo
-2. Symlink your fork for development (see Install)
-3. Edit `SKILL.md` to change the analysis workflow
-4. Edit `templates/` to change output formats
-5. Changes take effect immediately — no rebuild needed
-6. Submit a PR
+2. Edit `harness/default.py` to change default context generation
+3. Edit `lib/` to change CLI commands
+4. Changes take effect immediately via symlinks
+5. Submit a PR
 
 ## License
 

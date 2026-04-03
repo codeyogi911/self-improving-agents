@@ -1,17 +1,15 @@
 ---
 name: reflect
 description: >
-  The repo oracle that answers "why," backed by Entire session evidence. Entire
-  CLI is the durable write-path and checkpoint substrate; /reflect reads from
-  that substrate to extract decisions, failures, and working context. Stores
-  interpretations as structured evidence (.reflect/) and compiles context
-  briefings for future sessions. Core commands: /reflect (analyze sessions),
-  /reflect why <file> (decision trail with receipts), /reflect context
-  (compile context briefing), /reflect brief <topic-or-files> (task-focused
-  context). Also: /reflect what-failed <topic>, /reflect status,
-  /reflect search. Trigger on "reflect", "session analysis",
-  "what went wrong", "what can I improve", "why did we", "what failed".
-allowed-tools: Read, Edit, Bash, Glob, Grep
+  Repo-owned memory for AI coding agents. Reads raw evidence from Entire CLI
+  sessions and git history on demand via a replaceable harness. Generates
+  context briefings, answers "why" queries with raw evidence, searches
+  across all sources, and self-improves via harness analysis. Commands:
+  /reflect (regenerate context), /reflect why <file-or-topic>,
+  /reflect search <query>, /reflect status, /reflect improve.
+  Trigger on "reflect", "why did we", "what happened", "session history",
+  "what do I need to know", "improve harness", "harness quality".
+allowed-tools: Read, Bash, Glob, Grep
 hooks:
   SessionStart:
     - hooks:
@@ -19,596 +17,161 @@ hooks:
           command: "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
 metadata:
   author: shashwatjain
-  version: '3.0'
+  version: '4.0'
 ---
 
-# Reflect — Portable Repo Memory
+# Reflect — Repo-Owned Memory
 
-You build portable, repo-owned memory for AI coding agents. Agent memory
-(Claude's `~/.claude/projects/`, Cursor's internal state) is machine-local and
-vendor-specific. You solve this by putting memory in the repo: decisions,
-failure patterns, and working context stored as structured evidence in
-`.reflect/`, versioned with git, readable by any agent.
-
-Entire CLI is the durable write-path — it captures and checkpoints sessions.
-You read from that evidence substrate to answer "why": why was this decision
-made, what failed before, what does the AI need to know right now. You compile
-context briefings that supplement (never replace) the project's CLAUDE.md.
-
-**Auto-run mode**: If the SessionStart hook output contains `REFLECT_AUTO_RUN`,
-run **only** the Context command (regenerate `.reflect/context.md` from existing
-evidence). This keeps the briefing fresh without writing new committable artifacts.
-If unanalyzed sessions exist, include a nudge line in context.md:
-`<!-- N new sessions since last /reflect — run /reflect to capture new evidence -->`
-Full analysis with artifact writes requires an explicit `/reflect` invocation.
+You help users query and manage repo-owned memory for AI coding agents.
+Reflect reads raw evidence from Entire CLI sessions and git history on demand
+— no intermediate storage, no interpretation layer. A replaceable harness
+script generates context briefings; live queries dump raw evidence for you
+to reason over.
 
 Parse $ARGUMENTS to determine which command to run:
 
-1. Strip "and bake" if present → set bake flag (combinable with all commands)
-2. Match command:
-   - `why <file-or-module>` → go to **Command: Why**
-   - `what-failed <topic>` → go to **Command: What-Failed**
-   - `context` → go to **Command: Context**
-   - `status` → go to **Command: Status**
-   - `brief <topic-or-files>` → go to **Command: Brief**
-   - `search <query>` → go to **Command: Search**
-   - Everything else → go to **Command: Analyze** (the default)
-
-For the default Analyze command, further parse remaining $ARGUMENTS:
-- "last N sessions" or "last N" → limit to N most recent
-- A session ID (looks like a hash or short ID) → analyze only that session
-- Any remaining text → treat as a **topic search query**
-- No scope → default to last 5 sessions
-- Cap at 10 sessions per run
+1. `why <file-or-topic>` → go to **Command: Why**
+2. `search <query>` → go to **Command: Search**
+3. `status` → go to **Command: Status**
+4. `context` → go to **Command: Context**
+5. `note <title>` → go to **Command: Note**
+6. `improve` → go to **Command: Improve**
+7. Everything else (including no arguments) → go to **Command: Context**
 
 ---
 
-## Step 0: Prerequisites (all commands)
+## Step 0: Prerequisites
 
-1. Check if Entire CLI is installed:
+1. Check if `reflect` CLI is installed:
    ```bash
-   which entire || test -f ~/.local/bin/entire
+   which reflect
    ```
-   If NOT found → help the user install it:
-   - Tell them: "Entire CLI is needed to capture session transcripts. Let me
-     help you set it up."
-   - Offer to install via Homebrew:
-     ```bash
-     brew tap entireio/tap && brew install entireio/tap/entire
-     ```
-     Or if they prefer Go: `go install github.com/entireio/cli/cmd/entire@latest`
-   - After installation, ask the user to run `entire login` in their terminal
-     to authenticate (this needs interactive input, so the user must run it
-     themselves).
-   - Once installed, continue.
+   If NOT found → tell the user:
+   > "The reflect CLI is not installed. Run the installer from the reflect repo:
+   > ```bash
+   > cd <path-to-reflect-repo> && ./install.sh
+   > ```"
+   and stop.
 
-2. Check if Entire is configured in the current repository:
+2. Check if `.reflect/` exists in the project root:
    ```bash
-   entire status
+   test -d .reflect
    ```
-   If not configured → run `entire enable` to set it up. Report: "Entire is
-   now set up! Run some coding sessions, then come back to `/reflect` to
-   analyze them." and stop.
+   If NOT found → run `reflect init` to set it up.
 
-   If configured but has no sessions → report "No session history available
-   yet. Run some sessions first, then come back to reflect." and stop.
-
-3. Ensure the `.reflect/` knowledge store exists:
-   ```bash
-   mkdir -p .reflect/sessions .reflect/decisions .reflect/insights .reflect/files .reflect/traces .reflect/history
-   ```
-
-4. Recommend `.gitignore` for generated artifacts:
-   - Check if `.gitignore` exists and whether it already contains `.reflect/context.md`.
-   - If not, suggest to the user:
-     > "Tip: Add `.reflect/context.md` to your `.gitignore`. It's a generated
-     > overlay — the canonical source is the typed records in `.reflect/sessions/`,
-     > `.reflect/decisions/`, `.reflect/insights/`, and `.reflect/files/`.
-     > Those should be committed; `context.md` should be regenerated locally."
-
-5. **Auto-wire context loading**: Check if `CLAUDE.md` exists in the project root.
-   If it does, check whether it already contains `@.reflect/context.md`.
-   If NOT present, append this line to CLAUDE.md:
-   ```
-   @.reflect/context.md
-   ```
-   This ensures the dynamic context briefing is automatically loaded in every
-   future session. Do this silently — no user prompt needed. If `CLAUDE.md` does
-   not exist, skip this step (don't create CLAUDE.md just for this).
-
-6. **Size budget**: Check the total size of `.reflect/`:
-   ```bash
-   du -sh .reflect/ 2>/dev/null
-   ```
-   If the directory exceeds 5MB, warn the user:
-   > "Warning: `.reflect/` is over 5MB. Consider running `/reflect status` to
-   > identify stale artifacts for archival."
-   If `.reflect/index.md` does not exist, create it with:
-   ```markdown
-   # Reflect Knowledge Index
-   <!-- Auto-maintained by /reflect -->
-   
-   ## Sessions
-   | Date | ID | Summary | Outcome |
-   |------|-----|---------|---------|
-   
-   ## Decisions
-   | ID | Title | Status | Date |
-   |----|-------|--------|------|
-   
-   ## Insights
-   | Slug | Title | Confidence | Times Seen |
-   |------|-------|------------|------------|
-   ```
+3. **Auto-wire context loading**: If `CLAUDE.md` exists and does not contain
+   `@.reflect/context.md`, append that line. This ensures the context briefing
+   is loaded in every future session. Do this silently.
 
 ---
 
-## Command: Analyze (default)
+## Command: Context (default)
 
-This is the main command. It analyzes sessions, extracts patterns, and writes
-to the knowledge store.
+Run the harness to regenerate the context briefing:
 
-### Step 1: Gather Session Data
+```bash
+reflect context
+```
 
-1. Run `entire status` for a session overview.
+Report the result to the user: "Context briefing updated."
 
-2. Run `entire explain` to get session and commit details.
-
-3. If a **topic query** was detected in $ARGUMENTS:
-   a. Run `entire explain --short --search-all` to retrieve all session intents.
-   b. Semantically match intents against the topic — be inclusive. "auth issues"
-      should match "Fixed JWT refresh bug" or "Debugged login redirect loop".
-   c. If no matches → report and stop.
-   d. Cap at 10 matches. For each, run `entire explain --session <ID>`.
-   e. Note total sessions and match count for the reflection.
-
-### Step 2: Pattern Extraction
-
-Parse session data for these patterns:
-
-**Problems:**
-- **Retry loops** — same file edited 3+ times (thrashing)
-- **Research-then-fail** — investigation happened but build still failed
-- **Verification ping-pong** — rejected, fixed, rejected again
-- **Long tool chains** — many sequential Bash/Read/Grep with no Write
-- **Token-heavy sessions** — high token count relative to files changed
-- **Compaction frequency** — frequent context compression events
-
-**Successes:**
-- **Clean first-pass completions** — tasks that succeeded on first try
-- **Effective research** — research that prevented failures
-- **Fast iterations** — short build-verify cycles that converged quickly
-
-**Opportunities:**
-- **Escalation resolutions** — how the human resolved escalations
-- **Time sinks** — disproportionate effort relative to complexity
-- **Repeated manual steps** — things that could be automated
-
-**Evidence capture:** For each pattern identified, preserve 1-3 key raw fragments
-from the session transcript — the specific error message, the command that
-revealed the issue, the retry sequence, or the tool output that was surprising.
-These go into the session's `## Evidence` section and enable causal reasoning
-in future sessions (understanding *why* something failed, not just *that* it
-failed).
-
-### Step 3: Decision Extraction
-
-While analyzing sessions, watch for **architectural or design choices** where
-alternatives were considered. For each decision found:
-
-1. Read the decision format template from `templates/decision-format.md`.
-2. Check `.reflect/decisions/` for existing decisions on the same topic.
-   - If a prior decision exists and is confirmed → update `last_validated`.
-   - If a prior decision is contradicted → mark it `superseded` and create new.
-3. Assign the next sequential ID (read existing files to find the highest).
-4. Write the decision record to `.reflect/decisions/<NNNN>-<slug>.md`.
-
-### Step 4: Cross-Reference & Confidence
-
-1. Read existing insights from `.reflect/insights/` — check for recurring
-   patterns. If a pattern from a prior session appears again:
-   - Update the existing insight: increment `times_seen`, append session ID,
-     update `last_seen`, add to Evidence Trail.
-   - Promote confidence if warranted (MEDIUM → HIGH on recurrence).
-
-2. Read `CLAUDE.md` if it exists — don't duplicate what's already known.
-
-3. Read `.claude/agents/` if present — check for overlap with existing rules.
-
-5. Assign confidence to each new insight:
-   - **HIGH** — seen in 2+ sessions, or 3+ retries, or promoted from MEDIUM
-   - **MEDIUM** — seen once but caused failure or major time sink
-   - **LOW** — minor or uncertain pattern
-
-6. **Contradiction check**: When creating or updating an insight, search existing
-   insights for contradictions. If a new insight directly contradicts an existing
-   one (e.g., "always use X" vs "never use X"):
-   - Set `contradicted_by: <new-slug>` on the old insight.
-   - Set `contradicts: <old-slug>` on the new insight.
-   - A contradicted insight is excluded from context.md but NOT deleted.
-
-7. **Negative memory**: If a session shows an approach was tried and deliberately
-   abandoned (reverted, caused regressions, or explicitly rejected), create an
-   insight with `category: rejected-approach`. These serve as "don't go here
-   again" markers and prevent future sessions from re-attempting failed approaches.
-
-8. **Relevance typing**: When creating an insight, assign `relevance_type`:
-   - `architectural` if it relates to design patterns, structural choices,
-     language constraints, or invariants that won't change with time.
-   - `temporal` (default) if it relates to current tooling, dependencies,
-     workarounds, or transient conditions.
-
-### Step 5: Write to Knowledge Store
-
-Read the relevant format templates from the `templates/` directory.
-
-**Validation gate:** Before writing any artifact, verify required fields:
-- `schema_version` is present and set to `"1.1"`
-- `date` is present and valid ISO 8601 format
-- `session_id` (sessions) or `id` (decisions/insights) is present
-- `outcome` (sessions) is one of `success`, `partial`, `failure`
-- `confidence` (decisions/insights) is one of `LOW`, `MEDIUM`, `HIGH`
-- `category` (insights) is a recognized value
-
-If a **required** field fails validation, do NOT write the artifact — report the
-error and skip it. Required fields are structural; a malformed date or missing
-ID makes the artifact unparseable by downstream consumers (context generation,
-trace indexing, freshness calculation). Optional fields (`env_snapshot`,
-`token_efficiency`, `duration_estimate`, etc.) may be absent without blocking.
-
-**For each session analyzed:**
-1. Read `templates/session-format.md` for the format.
-2. Write a session summary to `.reflect/sessions/YYYY-MM-DD_<session-id>.md`.
-3. If the session produced noteworthy evidence fragments (errors, discoveries,
-   retries), append rows to `.reflect/traces/index.md`. Create the file from
-   the SPEC template if it doesn't exist. Cap at 100 rows total.
-
-**For each new or updated insight:**
-1. Read `templates/insight-format.md` for the format.
-2. Write or update the insight in `.reflect/insights/<slug>.md`.
-
-**For files with meaningful context captured** (best-effort cache, not canonical):
-1. Read `templates/file-knowledge-format.md` for the format.
-2. Write or update the file knowledge map in `.reflect/files/`.
-   - Encode path: replace `/` with `--`, append `.md`.
-   - If the file map exists, merge new facts (don't duplicate).
-   - File maps are a convenience index rebuilt from session data — decisions
-     and insights are the durable primitives.
-
-**Update the index:**
-- Update `.reflect/index.md` with new sessions, decisions, and insights.
-
-### Step 6: Regenerate Context
-
-After every analysis run, automatically regenerate the dynamic context file:
-1. Follow the **Command: Context** steps below.
-2. This ensures `.reflect/context.md` is always up-to-date.
-
-### Step 7: Display Summary
-
-Show the user:
-- Sessions analyzed (count and IDs)
-- If topic search: **Topic filter**: {topic} (matched N of total sessions)
-- Key patterns found (top 3-5)
-- HIGH confidence insights with recommended actions
-- New decisions recorded
-- Knowledge store stats (total sessions, insights, decisions)
-
-### Step 8: Bake Insights (Optional)
-
-If $ARGUMENTS contains "and bake", or the user confirms when asked:
-
-For each HIGH confidence insight:
-
-1. **Determine the target file:**
-   - If the insight maps to a specific agent and `.claude/agents/{agent}.md`
-     exists → target that agent file
-   - If project-wide or no agents exist → target `CLAUDE.md`
-   - Never create new agent files — only append to existing ones
-
-2. **Bake into the target:**
-   - For agent files: append to `## Project-Specific Rules` section
-   - For CLAUDE.md: append to `## Session Insights` section
-   - Write as a clear, actionable instruction
-   - Check that a substantially similar insight isn't already baked in
-
-3. **Update the insight file** — set `baked: true` and `baked_to: <target>`
-
-If $ARGUMENTS does NOT contain "and bake":
-- Show HIGH confidence insights and ask: "Would you like to bake these
-  insights into your project files?"
+If the **SessionStart hook** output contains `REFLECT_AUTO_RUN`, run this
+command automatically without user prompting. This keeps the briefing fresh.
 
 ---
 
 ## Command: Why
 
-**Usage**: `/reflect why <file-or-module>`
+**Usage**: `/reflect why <file-or-topic>`
 
-Shows the full decision trail for a file — every session that touched it,
-every decision that shaped it, and every insight related to it.
+This is a live query — it dumps raw evidence for you to reason over.
 
-### Steps:
+```bash
+reflect why <file-or-topic>
+```
 
-1. Normalize the file path from $ARGUMENTS (e.g., `src/auth/middleware.ts`).
+Read the output and present it as a structured narrative:
+- What sessions touched this file/topic and what happened
+- What decisions were made and why
+- What went wrong (if anything)
+- What the user should know going forward
 
-2. Encode the path (`/` → `--`) and check for `.reflect/files/<encoded>.md`.
-
-3. If the file knowledge map exists:
-   a. Read it.
-   b. Follow the `sessions` references — read each session summary.
-   c. From each session summary, extract `commits` from frontmatter for SHA references.
-   d. Follow the `decisions` references — read each decision record.
-   e. Follow the `insights` references — read each insight.
-
-4. If no file knowledge map exists:
-   a. Search `.reflect/sessions/*.md` for sessions that mention this file
-      in their `files_touched` frontmatter.
-   b. Search `.reflect/decisions/*.md` for decisions that reference this file.
-   c. Search `.reflect/insights/*.md` for insights from sessions involving
-      this file.
-
-5. Compose a **structured decision graph with receipts**:
-   > "Here's what I know about `<file>`:
-   >
-   > **What it does**: <from file knowledge map>
-   >
-   > **Decision trail** (with receipts):
-   > - <YYYY-MM-DD> `<commit-SHA-short>` (session `<session-id>`):
-   >   <What was decided or changed, and why>
-   >   Decision ref: <decision-id if applicable>
-   > - <YYYY-MM-DD> `<commit-SHA-short>` (session `<session-id>`):
-   >   <Next event>
-   >
-   > **Competing hypotheses** (where close alternatives existed):
-   > - <Decision title>: Chose <option A> over <option B> because <reason>.
-   >   Confidence: <HIGH|MEDIUM>. <option B> would be better if <condition>.
-   >
-   > **Active rules**: <insights that apply to this file, with session citations>
-   >
-   > **Rejected approaches**: <any `rejected-approach` insights for this file>
-   >
-   > **Unresolved ambiguity**:
-   > - <Things we're not sure about — conflicting evidence, untested assumptions>
-   >
-   > **Pitfalls**: <common issues from file knowledge map>"
-
-6. If nothing is found → report: "No knowledge found for `<file>`. Run
-   `/reflect` to analyze sessions that touched this file."
+**You are the intelligence layer.** The CLI gives you raw evidence; you
+construct the "why" story. This is the key design: raw traces outperform
+pre-computed summaries (Meta-Harness, 2026).
 
 ---
 
-## Command: What-Failed
-
-**Usage**: `/reflect what-failed <topic>`
-
-Shows failure patterns related to a topic, with evidence and recurrence data.
-
-### Steps:
-
-1. Extract the topic from $ARGUMENTS.
-
-2. Search across the knowledge store:
-   a. Grep `.reflect/insights/*.md` for the topic and for `category: anti-pattern`
-      or `category: pitfall` entries.
-   b. Grep `.reflect/sessions/*.md` for sessions mentioning failures related
-      to the topic.
-
-3. For each match, read the full file and assess relevance semantically —
-   don't rely on exact keyword matches alone.
-
-4. Sort results by: severity (HIGH first), then recency (newest first).
-
-5. Present:
-   > "**Failure patterns for '<topic>':**
-   >
-   > 1. **<pattern>** (HIGH, seen <N>x, last: <date>)
-   >    <description with evidence>
-   >    Status: <BAKED | NOT BAKED>
-   >
-   > 2. **<pattern>** (MEDIUM, seen <N>x, last: <date>)
-   >    <description>
-   >
-   > **Sessions with '<topic>' failures:** <list of session IDs with dates>"
-
-6. Suggest baking any unbaked HIGH insights.
-
----
-
-## Command: Context
-
-**Usage**: `/reflect context`
-
-Regenerates `.reflect/context.md` — a compiled briefing of the most relevant
-current context from the evidence store, optionally referenced from CLAUDE.md
-via `@.reflect/context.md`. This is a generated overlay, not a source of truth.
-
-### Steps:
-
-1. Read the context format template from `templates/context-format.md`.
-
-2. Read `.reflect/config.yaml` if it exists for custom settings. Defaults:
-   - `max_lines: 150`
-   - `half_life_days: 60`
-   - `freshness_threshold: 0.3`
-   - `session_start: auto` (`auto` regenerates context.md + nudges; `manual` just reminds)
-
-3. **Gather insights**: Read all `.reflect/insights/*.md`. For each:
-   - Parse `last_seen` from frontmatter.
-   - Calculate freshness: `2^(-(days_since_last_seen / half_life_days))`.
-     Use half_life_days = 365 for `relevance_type: architectural` insights,
-     default (60) for `temporal`.
-   - Exclude insights where `contradicted_by` is set (they've been superseded).
-   - Partition insights by freshness:
-     - **Active** (freshness >= threshold): include in Active Rules section.
-     - **Archived** (freshness < threshold): demote to Archive References section
-       (max 5, sorted by `times_seen` descending). These remain discoverable for
-       regression debugging and cross-session transfer.
-   - Calculate days since last seen and assign a **staleness tier** for Active Rules:
-     - **fresh** (freshness > 0.7): no action cue needed
-     - **aging** (freshness 0.3–0.7): include "verify before relying on this"
-     Insights below 0.3 go to Archive References, not Active Rules.
-   - Cross-check each insight against CLAUDE.md rules. If an insight contradicts
-     or conflicts with a human-authored rule in CLAUDE.md, exclude it from
-     context.md and log a warning in the summary output.
-   - Sort by confidence (HIGH first) then freshness (descending).
-
-4. **Gather decisions**: Read all `.reflect/decisions/*.md`. Filter to
-   `status: accepted`. Decisions do not decay — include all accepted decisions,
-   sorted by date descending. Cap at 10 for the context file.
-
-5. **Gather file knowledge**: Read all `.reflect/files/*.md`. Filter to files
-   whose `last_updated` is within the last 5 sessions (check by date).
-
-6. **Gather failure patterns**: From insights, filter `category: anti-pattern`
-   or `category: pitfall` that are NOT baked.
-
-6b. **Gather recent failures**: Collect the last 3 items from:
-    - Sessions with `outcome: partial` or `outcome: failure` (from frontmatter).
-    - Anti-pattern/pitfall insights from recent sessions.
-    Sort by date descending. For each, include a one-line evidence pointer
-    (error message, pattern name, or session ID). These populate the
-    `## Recent Failures` section, placed before Active Rules so agents
-    start sessions aware of what didn't work.
-
-7. **Generate context.md** following the template format:
-   - Recent Failures: max 3 entries (before Active Rules)
-   - Active Rules: max 15 entries
-   - Key Decisions: max 10 entries
-   - File Notes: max 10 entries
-   - Watch Out: max 5 entries
-   - Archive References: max 5 entries (insights below freshness threshold)
-   - Omit empty sections.
-   - Total must stay under the line budget.
-
-8. Write to `.reflect/context.md`. Use human-readable staleness in Active Rules
-   entries — format each entry with its staleness tier and days-ago cue rather
-   than raw expiry dates (see `templates/context-format.md` for the format).
-
-9. **Nudge for unanalyzed sessions** (auto-run or manual): After writing
-   context.md, check if Entire has sessions newer than the most recent
-   `.reflect/sessions/*.md` file. If so, append a comment to context.md:
-   ```
-   <!-- N new sessions since last /reflect — run /reflect to capture new evidence -->
-   ```
-   This ensures the agent (and user) are aware of uncaptured evidence.
-
----
-
-## Command: Status (lightweight)
-
-**Usage**: `/reflect status`
-
-Quick summary of the evidence store. Keep this simple — just counts and
-actionable items, not a full dashboard.
-
-### Steps:
-
-1. Count artifacts:
-   ```bash
-   ls .reflect/sessions/*.md 2>/dev/null | wc -l
-   ls .reflect/decisions/*.md 2>/dev/null | wc -l
-   ls .reflect/insights/*.md 2>/dev/null | wc -l
-   ```
-
-2. Present:
-   > **Evidence Store**: N sessions, N decisions, N insights
-   > **Unbaked HIGH insights**: N
-   > **Context briefing**: last updated <date or "not yet generated">
-
----
-
-## Command: Search (lightweight)
+## Command: Search
 
 **Usage**: `/reflect search <query>`
 
-Simple grep across the evidence store — not a semantic search engine.
+```bash
+reflect search <query>
+```
 
-### Steps:
-
-1. Extract the search query from $ARGUMENTS.
-
-2. Grep across `.reflect/sessions/`, `.reflect/decisions/`, and `.reflect/insights/`
-   for the query.
-
-3. Read matched files and present the top 10 most relevant results with type
-   labels and brief excerpts.
+Display the results to the user with source labels.
 
 ---
 
-## Command: Brief (task-focused context)
+## Command: Status
 
-**Usage**: `/reflect brief <topic-or-files>`
+**Usage**: `/reflect status`
 
-Generates a focused, task-specific context overlay for the current work. Unlike
-the static `context.md` briefing (which covers everything above the freshness
-threshold), this command selects only knowledge relevant to a specific topic or
-set of files. Output goes to stdout, not to `context.md`.
+```bash
+reflect status
+```
 
-### Steps:
+Display the output. If no evidence sources are found, suggest next steps.
 
-1. Parse $ARGUMENTS after "brief" to identify:
-   - **File paths**: arguments containing `/` or `.` (e.g., `src/auth/middleware.ts`)
-   - **Topic keywords**: everything else (e.g., `auth`, `database migrations`)
+---
 
-2. **File-based search** (if file paths provided):
-   - Encode each path (`/` → `--`) and check `.reflect/files/<encoded-path>.md`.
-   - Read matched file knowledge maps.
-   - Extract linked `sessions[]`, `decisions[]`, and `insights[]` from frontmatter.
-   - Read those linked artifacts.
+## Command: Note
 
-3. **Topic-based search** (if topic keywords provided):
-   - Grep `.reflect/insights/*.md`, `.reflect/decisions/*.md`, and
-     `.reflect/sessions/*.md` for the keywords.
-   - Read matched files and extract relevant content.
+**Usage**: `/reflect note <title>`
 
-4. **Rank results** by relevance:
-   - Direct file match (from file knowledge map links) → highest priority
-   - Topic keyword match in title/frontmatter → high priority
-   - Topic keyword match in body → medium priority
-   - More recent artifacts rank higher within each tier
+```bash
+echo "<content>" | reflect note <title>
+```
 
-5. **Output a focused briefing** (max 50 lines) in this format:
+Or interactively help the user write a note and pipe it in.
 
-   ```markdown
-   ## Brief: <topic/files>
-   <!-- Focused context for current task — generated by /reflect brief -->
+---
 
-   ### Relevant Decisions
-   - **<Decision title>**: <One-line summary> (<date>)
+## Command: Improve
 
-   ### Applicable Rules
-   - <Insight relevant to this task> (<confidence>, <N>x)
+**Usage**: `/reflect improve`
 
-   ### File Context
-   - `<file-path>`: <Key facts and pitfalls>
+Analyzes harness effectiveness and proposes changes. This is the self-improvement loop.
 
-   ### Watch Out
-   - <Relevant failure pattern> (seen <N>x)
-   ```
+```bash
+reflect improve
+```
 
-   Omit any section that would be empty. Prefer fewer, more relevant entries
-   over comprehensive coverage.
+Read the full output. It contains:
+1. **Context Quality Issues** — noise, echoes, truncation in context.md
+2. **Evidence Gaps** — things sessions needed that the harness didn't surface
+3. **Current Harness Source** — the Python script to edit
 
-6. If no relevant knowledge is found, report:
-   > "No knowledge found for '<topic/files>'. Run `/reflect` to analyze sessions
-   > that touched this area."
+Based on the analysis:
+1. Propose specific, minimal edits to the harness at `.reflect/harness`
+   (and `harness/default.py` if it exists as the source)
+2. Show the user the diff and explain why each change helps
+3. After approval, apply the edits and re-run `reflect context` to verify
+4. Run `reflect improve` again to confirm the issues are resolved
+
+**This is the core learning loop**: the harness generates context, the agent
+evaluates it against real session evidence, and proposes harness improvements.
+The human reviews and merges. Over time, the harness evolves to produce
+better context for this specific repo.
 
 ---
 
 ## Rules
 
-- NEVER read `.entire/metadata/` directly — always use Entire CLI commands
-- Cite session IDs for every pattern so findings are traceable
-- Focus on actionable insights, not statistics for statistics' sake
-- If no meaningful patterns emerge, say so — don't fabricate insights
-- Don't duplicate insights already in CLAUDE.md or agent Project-Specific Rules
-- When updating existing knowledge artifacts, preserve existing content and merge
-- Always regenerate context.md after an analysis run
-- Template files are in the same directory as this SKILL.md — read them at runtime
-- `.reflect/context.md` is a generated overlay — canonical data lives in the typed
-  records (sessions/, decisions/, insights/, files/). context.md should be in .gitignore.
-- NEVER include file contents, environment variable values, API keys, tokens, passwords,
-  or any credential-like strings in knowledge artifacts. If session data contains
-  secrets, redact them before writing. Use `[REDACTED]` as a placeholder.
-- Total `.reflect/` directory should stay under 5MB. Warn the user and suggest
-  archiving stale artifacts to `.reflect/history/` if it grows beyond that.
+- NEVER read `.entire/metadata/` directly — use `reflect` CLI or `entire` CLI
+- When running `/reflect why`, read the raw output and synthesize a narrative
+- The harness at `.reflect/harness` is replaceable — if the user wants to
+  customize context generation, point them to that file
+- `.reflect/context.md` is generated — never edit it manually
+- NEVER include secrets, API keys, or credentials in notes or output

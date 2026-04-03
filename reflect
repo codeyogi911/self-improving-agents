@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""reflect — repo-owned memory for AI coding agents.
+
+Reads raw evidence from Entire CLI and git history on demand.
+Generates context briefings via a replaceable harness.
+"""
+
+import argparse
+import sys
+import os
+
+# Add the reflect repo to Python path so lib/ is importable
+# Use realpath to resolve symlinks (install.sh symlinks into ~/.local/bin)
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+
+from lib.init import cmd_init
+from lib.context import cmd_context
+from lib.why import cmd_why
+from lib.search import cmd_search
+from lib.status import cmd_status
+from lib.note import cmd_note
+from lib.improve import cmd_improve
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="reflect",
+        description="Repo-owned memory for AI coding agents.",
+    )
+    subparsers = parser.add_subparsers(dest="command")
+
+    # reflect init
+    subparsers.add_parser("init", help="Initialize .reflect/ with default harness")
+
+    # reflect context
+    ctx = subparsers.add_parser("context", help="Generate context.md via harness")
+    ctx.add_argument("--max-lines", type=int, default=None, help="Line budget override")
+
+    # reflect why
+    why = subparsers.add_parser("why", help="Fetch raw evidence for a file or topic")
+    why.add_argument("query", nargs="+", help="File path or topic to search for")
+
+    # reflect search
+    search = subparsers.add_parser("search", help="Grep across all evidence sources")
+    search.add_argument("query", nargs="+", help="Search query")
+
+    # reflect status
+    subparsers.add_parser("status", help="Show evidence source availability")
+
+    # reflect note
+    note = subparsers.add_parser("note", help="Add a manual note")
+    note.add_argument("title", nargs="+", help="Note title")
+
+    # reflect improve
+    subparsers.add_parser("improve", help="Analyze harness effectiveness, suggest changes")
+
+    args = parser.parse_args()
+
+    if args.command is None:
+        parser.print_help()
+        return 0
+
+    commands = {
+        "init": cmd_init,
+        "context": cmd_context,
+        "why": cmd_why,
+        "search": cmd_search,
+        "status": cmd_status,
+        "note": cmd_note,
+        "improve": cmd_improve,
+    }
+
+    return commands[args.command](args)
+
+
+if __name__ == "__main__":
+    sys.exit(main() or 0)

@@ -4,35 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-A Claude Code skill called `/reflect` — portable, repo-owned memory for AI coding agents. Agent memory (Claude's `~/.claude/projects/`, Cursor's internal state) is machine-local and vendor-specific; `/reflect` puts memory in the repo instead. Entire CLI is the durable write-path and checkpoint substrate; `/reflect` reads from that substrate to extract decisions, failures, and working context. Stores interpretations in a structured knowledge base (`.reflect/`) and generates context overlays that make every future session smarter.
+Repo-owned memory for AI coding agents. Reads raw evidence from Entire CLI sessions and git history on demand via a replaceable harness script. No intermediate storage — the harness fetches evidence at context-generation time. Generates context briefings (`context.md`) that any AI tool can read.
 
 ## Structure
 
-- `SKILL.md` — the skill definition file (frontmatter + workflow steps, all commands)
-- `SPEC.md` — agent-agnostic specification for the `.reflect/` evidence store format
-- `templates/session-format.md` — format for session summaries in `.reflect/sessions/`
-- `templates/decision-format.md` — format for decision records in `.reflect/decisions/`
-- `templates/insight-format.md` — format for insights in `.reflect/insights/`
-- `templates/file-knowledge-format.md` — format for file knowledge maps in `.reflect/files/`
-- `templates/context-format.md` — rules for generating `.reflect/context.md`
-- `hooks/session-start.sh` — SessionStart hook for new-session reminders
-- `README.md` — installation and usage docs
+- `reflect` — CLI entry point (Python)
+- `lib/` — CLI modules (sources, context, init, why, search, status, note)
+- `harness/default.py` — default harness script (reads Entire + git, writes context)
+- `SKILL.md` — Claude Code skill definition (thin wrapper around CLI)
+- `SPEC.md` — specification for `.reflect/` directory format
+- `hooks/session-start.sh` — SessionStart hook for context freshness
+- `install.sh` — installer (symlinks CLI + skill)
+- `README.md` — user-facing docs
+- `ROADMAP.md` — future phases
 - `CLAUDE.md` — this file
-- `evals/evals.json` — skill evaluation test cases
 
 ## Development
 
-- Edit `SKILL.md` to change the analysis workflow or add commands
-- Edit `templates/` to change output formats for any artifact type
-- Test locally by symlinking:
-  ```bash
-  mkdir -p ~/.claude/skills/reflect
-  ln -sf $(pwd)/SKILL.md ~/.claude/skills/reflect/SKILL.md
-  ln -sf $(pwd)/templates ~/.claude/skills/reflect/templates
-  ln -sf $(pwd)/hooks ~/.claude/skills/reflect/hooks
-  ```
-- Invoke with `/reflect` in any project with Entire CLI sessions to test
-- The skill reads templates at runtime, so changes to templates/ take effect immediately when symlinked
+- Edit `harness/default.py` to change default context generation
+- Edit `lib/` to change CLI commands
+- Edit `SKILL.md` to change the Claude Code skill behavior
+- Test locally: `python3 reflect context` or `python3 reflect why <topic>`
+- Install via `./install.sh` (symlinks, so changes propagate immediately)
 
 ## Session Insights
 

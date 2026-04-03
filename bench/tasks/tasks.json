@@ -1,0 +1,260 @@
+{
+  "tasks": [
+    {
+      "id": "why-001",
+      "type": "why_query",
+      "title": "Why were loanset XSUAA roles separated into a dedicated collection?",
+      "prompt": "Explain why the loanset XSUAA role-template-references were extracted from ROLE_ADMIN, ROLE_SALES_REP, and ROLE_SUPPORT into a dedicated ROLE_LOANSET collection in xs-security.json. What problem did this solve? What commit introduced this change?",
+      "ground_truth_signals": [
+        "ROLE_LOANSET",
+        "xs-security.json",
+        "role-template-references",
+        "independent access control",
+        "ROLE_ADMIN"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["configs/xs-security.json"],
+      "tags": ["xsuaa", "security", "loanset"]
+    },
+    {
+      "id": "why-002",
+      "type": "why_query",
+      "title": "Why was the srv disk-quota increased to 6G?",
+      "prompt": "Explain why the srv module disk-quota in mta.yaml was increased from 4G to 6G. What deployment failure prompted this? What dependency required the extra space?",
+      "ground_truth_signals": [
+        "disk-quota",
+        "6G",
+        "scanbotsdk",
+        "native binary",
+        "mta.yaml"
+      ],
+      "difficulty": "easy",
+      "relevant_files": ["mta.yaml"],
+      "tags": ["deployment", "scanbotsdk"]
+    },
+    {
+      "id": "why-003",
+      "type": "why_query",
+      "title": "Why does booking-service-op check SELECT.one before applying sales area filters?",
+      "prompt": "In booking-service-op.ts, the handler checks req.query.SELECT?.one before applying WHERE clauses for sales area scoping. Why is this necessary? What OData v4 constraint does this work around?",
+      "ground_truth_signals": [
+        "SELECT.one",
+        "single-entry read",
+        "OData v4",
+        "$filter forbidden on key reads",
+        "sales area scoping"
+      ],
+      "difficulty": "hard",
+      "relevant_files": ["srv/handlers/booking-service-op.ts"],
+      "tags": ["odata", "booking", "remote"]
+    },
+    {
+      "id": "why-004",
+      "type": "why_query",
+      "title": "Why does barcode detection only run on Linux?",
+      "prompt": "The barcode-detector.ts utility has a platform check that returns empty results on non-Linux systems. Why was this implemented? What dependency drives this constraint?",
+      "ground_truth_signals": [
+        "process.platform",
+        "linux",
+        "scanbotsdk",
+        "native binary",
+        "barcode-detector.ts"
+      ],
+      "difficulty": "easy",
+      "relevant_files": ["srv/utils/barcode-detector.ts"],
+      "tags": ["barcode", "platform"]
+    },
+    {
+      "id": "code-001",
+      "type": "code_modification",
+      "title": "Add a new error code for missing equipment serial number",
+      "prompt": "Add a new structured error code EQUIPMENT_NO_SERIAL_NUMBER to the loanset error codes in srv/lib/error-codes.ts. Follow the existing pattern (LoansetErrorCodes const object with typed exports). Show the handler code in loanset-service.ts that would use this error code during validation.",
+      "ground_truth_signals": [
+        "LoansetErrorCodes",
+        "error-codes.ts",
+        "as const",
+        "EQUIPMENT_NO_SERIAL_NUMBER",
+        "req.error"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["srv/lib/error-codes.ts", "srv/handlers/loanset-service.ts"],
+      "tags": ["code", "loanset", "validation"]
+    },
+    {
+      "id": "code-002",
+      "type": "code_modification",
+      "title": "Add Sentry middleware to a new PlaybookService handler",
+      "prompt": "Create a new handler file for PlaybookService that follows the project's established pattern for Sentry integration. Show the init() method with SentryCapIntegration.addSentryMiddleware(this) and the import. Reference how other services (admin-service.ts, inventory-service.ts) implement this.",
+      "ground_truth_signals": [
+        "SentryCapIntegration",
+        "addSentryMiddleware",
+        "init()",
+        "import",
+        "sentry-cap-integration"
+      ],
+      "difficulty": "easy",
+      "relevant_files": ["srv/utils/sentry-cap-integration.ts", "srv/handlers/admin-service.ts", "srv/handlers/inventory-service.ts"],
+      "tags": ["code", "sentry", "handler"]
+    },
+    {
+      "id": "code-003",
+      "type": "code_modification",
+      "title": "Add a virtual isExpiringSoon field to InventoryService Products",
+      "prompt": "Add a computed virtual field 'isExpiringSoon' (boolean) to the Products entity in inventory-service.cds and compute it in the READ handler in inventory-service.ts. Items expiring within 30 days should return true. Follow the existing virtual field pattern in the service.",
+      "ground_truth_signals": [
+        "virtual null as isExpiringSoon",
+        "isExpiryWithin30Days",
+        "30 days",
+        "inventory-service.cds",
+        "READ handler"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["srv/inventory-service.cds", "srv/handlers/inventory-service.ts", "db/inventory-model.cds"],
+      "tags": ["code", "inventory", "virtual"]
+    },
+    {
+      "id": "code-004",
+      "type": "code_modification",
+      "title": "Add a read-only value help entity for sales organizations",
+      "prompt": "Add a VH_SalesOrg entity to configuration-service.cds as a read-only entity that returns distinct sales organizations. Follow the existing VH_Division, VH_Plant pattern in the same file.",
+      "ground_truth_signals": [
+        "@readonly",
+        "VH_SalesOrg",
+        "SalesOrganization",
+        "SELECT DISTINCT",
+        "configuration-service.cds"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["srv/configuration-service.cds"],
+      "tags": ["code", "configuration", "value-help"]
+    },
+    {
+      "id": "debug-001",
+      "type": "debugging",
+      "title": "Diagnose XSUAA role-template-reference validation failure on CF deploy",
+      "prompt": "After deploying to Cloud Foundry, the XSUAA service instance creation fails with a role-template-reference validation error. The mbt build succeeded locally. What are the likely root causes? How do you diagnose and fix this? Walk through the debugging steps specific to this project.",
+      "ground_truth_signals": [
+        "xs-security.json",
+        "role-template-references",
+        "$XSSERVICENAME",
+        "mbt build",
+        "CF deploy"
+      ],
+      "difficulty": "hard",
+      "relevant_files": ["configs/xs-security.json", "mta.yaml"],
+      "tags": ["debugging", "deployment", "xsuaa"]
+    },
+    {
+      "id": "debug-002",
+      "type": "debugging",
+      "title": "Diagnose consumption charge sheet barcode extraction returning empty results",
+      "prompt": "A user reports that charge sheet processing finds no barcodes from uploaded PDFs, even though the PDFs contain clear GS1 barcodes. The service runs without errors. What are the diagnostic steps? Consider platform, SDK initialization, and GS1 parsing edge cases.",
+      "ground_truth_signals": [
+        "process.platform",
+        "linux",
+        "scanbotsdk",
+        "GS1 expiry parsing",
+        "barcode-detector.ts"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["srv/utils/barcode-detector.ts", "srv/handlers/consumption-service.js"],
+      "tags": ["debugging", "barcode", "consumption"]
+    },
+    {
+      "id": "debug-003",
+      "type": "debugging",
+      "title": "Diagnose booking data showing wrong tenant's data",
+      "prompt": "A tenant reports seeing booking data from another tenant's sales organization. The booking-service-op.ts handler has sales area scoping logic. What could cause a multi-tenant data leak? Walk through the scoping logic and identify potential failure points.",
+      "ground_truth_signals": [
+        "ActiveSalesArea",
+        "sales area scoping",
+        "WHERE clause",
+        "SELECT.one bypass",
+        "multi-tenant"
+      ],
+      "difficulty": "hard",
+      "relevant_files": ["srv/handlers/booking-service-op.ts"],
+      "tags": ["debugging", "security", "multi-tenant"]
+    },
+    {
+      "id": "debug-004",
+      "type": "debugging",
+      "title": "Diagnose consumption service RequestOrders $expand returning incomplete data",
+      "prompt": "The consumption service RequestOrders endpoint returns incomplete data when $expand=salesorder is used. Some fields are missing from the expanded salesorder navigation. The handler has custom expansion logic. What's likely wrong?",
+      "ground_truth_signals": [
+        "expand",
+        "findIndex",
+        "salesorder",
+        "remote expansion",
+        "consumption-service.js"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["srv/handlers/consumption-service.js"],
+      "tags": ["debugging", "consumption", "odata"]
+    },
+    {
+      "id": "arch-001",
+      "type": "architectural_reasoning",
+      "title": "Evaluate migrating consumption service handler from JS to TypeScript",
+      "prompt": "The consumption-service handler is one of the few remaining JavaScript files (consumption-service.js). Other handlers like admin-service.ts, inventory-service.ts, and booking-service-op.ts are TypeScript. Evaluate the trade-offs of migrating it. Consider: type safety for barcode/GS1 types, CDS-typer integration, testing impact, and the custom expansion logic.",
+      "ground_truth_signals": [
+        "TypeScript migration",
+        "cds-typer",
+        "@cds-models",
+        "type safety",
+        "consumption-service.js"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["srv/handlers/consumption-service.js", "srv/handlers/admin-service.ts", "srv/handlers/inventory-service.ts"],
+      "tags": ["architecture", "typescript"]
+    },
+    {
+      "id": "arch-002",
+      "type": "architectural_reasoning",
+      "title": "Evaluate adding event queue for cabinet unlock notifications",
+      "prompt": "The admin-service has an openCabinet action that unlocks physical cabinets. Evaluate adding async push notifications via the event queue (eventQueueConfig.yml) when a cabinet is unlocked. Consider: reliability, retry logic, notification payload design, and the existing push notification infrastructure.",
+      "ground_truth_signals": [
+        "eventQueueConfig.yml",
+        "openCabinet",
+        "push notification",
+        "async",
+        "terso-utils"
+      ],
+      "difficulty": "hard",
+      "relevant_files": ["srv/handlers/admin-service.ts", "srv/eventQueueConfig.yml", "srv/utils/terso-utils.js"],
+      "tags": ["architecture", "notifications", "cabinet"]
+    },
+    {
+      "id": "arch-003",
+      "type": "architectural_reasoning",
+      "title": "Evaluate replacing on-premise SREP booking service with local CAP entities",
+      "prompt": "The booking-service-op.ts connects to an on-premise SREP remote service for booking data. Evaluate the trade-offs of replacing this with local CAP entities that sync via periodic jobs. Consider: sales area scoping complexity, OData v4 constraints (SELECT.one issue), offline resilience, and data freshness.",
+      "ground_truth_signals": [
+        "cds.connect.to",
+        "remote service",
+        "SREP",
+        "sales area scoping",
+        "periodic sync"
+      ],
+      "difficulty": "hard",
+      "relevant_files": ["srv/handlers/booking-service-op.ts"],
+      "tags": ["architecture", "booking", "remote"]
+    },
+    {
+      "id": "arch-004",
+      "type": "architectural_reasoning",
+      "title": "Evaluate adding draft support to LoansetService's LoansetRequests",
+      "prompt": "LoansetRequests currently uses direct CRUD without draft support. ConfigurationService entities like OrderTypeConfig use @odata.draft.enabled. Evaluate adding draft support to LoansetRequests. Consider: the validateForCreation action, S/4 integration via createInS4/dissolveInS4, multi-step form workflows, and concurrent editing by multiple users.",
+      "ground_truth_signals": [
+        "@odata.draft.enabled",
+        "validateForCreation",
+        "createInS4",
+        "draft activation",
+        "concurrent editing"
+      ],
+      "difficulty": "hard",
+      "relevant_files": ["srv/loanset-service.cds", "srv/handlers/loanset-service.ts", "srv/configuration-service.cds"],
+      "tags": ["architecture", "loanset", "draft"]
+    }
+  ]
+}
