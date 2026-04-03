@@ -1,0 +1,68 @@
+{
+  "tasks": [
+    {
+      "id": "why-barcode",
+      "type": "why_query",
+      "title": "Why was barcode detection moved from client to server?",
+      "prompt": "Explain why the mymediset_cloud project moved barcode detection from the client-side consumption app to a server-side utility. What motivated this change? What were the implementation challenges? Reference specific commits, sessions, or decisions.",
+      "ground_truth_signals": [
+        "server-side",
+        "scanbotsdk",
+        "barcode-detector.ts",
+        "consumption",
+        "client to server"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["srv/utils/barcode-detector.ts", "srv/handlers/consumption-service.js"],
+      "tags": ["barcode", "consumption", "architecture"]
+    },
+    {
+      "id": "why-xsuaa",
+      "type": "why_query",
+      "title": "Why were loanset XSUAA roles separated into a dedicated collection?",
+      "prompt": "Explain why loanset XSUAA role-template-references were extracted from ROLE_ADMIN, ROLE_SALES_REP, and ROLE_SUPPORT into a dedicated ROLE_LOANSET collection in xs-security.json. What problem did this solve? What deployment issues were involved? Reference specific commits or sessions.",
+      "ground_truth_signals": [
+        "ROLE_LOANSET",
+        "xs-security.json",
+        "role-template-references",
+        "ROLE_ADMIN",
+        "deploy"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["configs/xs-security.json"],
+      "tags": ["xsuaa", "security", "loanset", "deploy"]
+    },
+    {
+      "id": "debug-scanbotsdk",
+      "type": "debugging",
+      "title": "Diagnose scanbotsdk CF staging failures",
+      "prompt": "The mymediset_cloud app has experienced cascading CF staging failures related to the scanbotsdk native binary. Walk through the root causes, the fix progression (what was tried and failed vs what worked), and the final resolution. What disk-quota was needed and why?",
+      "ground_truth_signals": [
+        "disk-quota",
+        "6G",
+        "scanbotsdk",
+        "staging",
+        "mta.yaml"
+      ],
+      "difficulty": "medium",
+      "relevant_files": ["mta.yaml"],
+      "tags": ["deployment", "scanbotsdk", "staging"]
+    },
+    {
+      "id": "arch-deploy-loops",
+      "type": "architectural_reasoning",
+      "title": "How to prevent multi-session deploy fix retry loops?",
+      "prompt": "The project has experienced patterns where a deploy failure cascades into multiple sessions of incremental fixes (each fix reveals the next issue). Based on the project history, what structural changes or validation steps could prevent these multi-session retry loops? Reference specific examples from the deployment history.",
+      "ground_truth_signals": [
+        "mbt build",
+        "pre-deploy validation",
+        "retry loop",
+        "cascading failures",
+        "disk-quota"
+      ],
+      "difficulty": "hard",
+      "relevant_files": ["mta.yaml", "configs/xs-security.json"],
+      "tags": ["deployment", "architecture", "process"]
+    }
+  ]
+}

@@ -8,3 +8,4 @@ __pycache__/
 *.pyc
 .reflect/context.md
 .reflect/.last_run
+bench/results/

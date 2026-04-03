@@ -3,11 +3,12 @@ name: reflect
 description: >
   Repo-owned memory for AI coding agents. Reads raw evidence from Entire CLI
   sessions and git history on demand via a replaceable harness. Generates
-  context briefings, answers "why" queries with raw evidence, and searches
-  across all sources. Commands: /reflect (regenerate context), /reflect why
-  <file-or-topic>, /reflect search <query>, /reflect status.
+  context briefings, answers "why" queries with raw evidence, searches
+  across all sources, and self-improves via harness analysis. Commands:
+  /reflect (regenerate context), /reflect why <file-or-topic>,
+  /reflect search <query>, /reflect status, /reflect improve.
   Trigger on "reflect", "why did we", "what happened", "session history",
-  "what do I need to know".
+  "what do I need to know", "improve harness", "harness quality".
 allowed-tools: Read, Bash, Glob, Grep
 hooks:
   SessionStart:
@@ -34,7 +35,8 @@ Parse $ARGUMENTS to determine which command to run:
 3. `status` → go to **Command: Status**
 4. `context` → go to **Command: Context**
 5. `note <title>` → go to **Command: Note**
-6. Everything else (including no arguments) → go to **Command: Context**
+6. `improve` → go to **Command: Improve**
+7. Everything else (including no arguments) → go to **Command: Context**
 
 ---
 
@@ -133,6 +135,35 @@ echo "<content>" | reflect note <title>
 ```
 
 Or interactively help the user write a note and pipe it in.
+
+---
+
+## Command: Improve
+
+**Usage**: `/reflect improve`
+
+Analyzes harness effectiveness and proposes changes. This is the self-improvement loop.
+
+```bash
+reflect improve
+```
+
+Read the full output. It contains:
+1. **Context Quality Issues** — noise, echoes, truncation in context.md
+2. **Evidence Gaps** — things sessions needed that the harness didn't surface
+3. **Current Harness Source** — the Python script to edit
+
+Based on the analysis:
+1. Propose specific, minimal edits to the harness at `.reflect/harness`
+   (and `harness/default.py` if it exists as the source)
+2. Show the user the diff and explain why each change helps
+3. After approval, apply the edits and re-run `reflect context` to verify
+4. Run `reflect improve` again to confirm the issues are resolved
+
+**This is the core learning loop**: the harness generates context, the agent
+evaluates it against real session evidence, and proposes harness improvements.
+The human reviews and merges. Over time, the harness evolves to produce
+better context for this specific repo.
 
 ---
 
