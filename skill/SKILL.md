@@ -1,14 +1,17 @@
 ---
 name: reflect
 description: >
-  Repo-owned memory for AI coding agents. Reads raw evidence from Entire CLI
-  sessions and git history on demand via a replaceable harness. Generates
-  context briefings, answers "why" queries with raw evidence, searches
-  across all sources, and self-improves via harness analysis. Commands:
-  /reflect (regenerate context), /reflect why <file-or-topic>,
-  /reflect search <query>, /reflect status, /reflect improve.
-  Trigger on "reflect", "why did we", "what happened", "session history",
-  "what do I need to know", "improve harness", "harness quality".
+  Answers questions about project history, past decisions, and how things
+  evolved. Use this skill whenever the user asks "why" about code, files,
+  architecture, or decisions — e.g., "why was this file deleted", "why did
+  we switch to X", "what happened with Y", "who changed Z and why". Also
+  use for retrospectives, post-mortems, understanding past sessions, learning
+  from recent work, onboarding context ("what do I need to know about this
+  repo"), and any question that is best answered by consulting git history
+  or past AI session transcripts. Even if the user doesn't say "reflect" or
+  "history" explicitly, if the answer lives in the past — use this skill.
+  Commands: /reflect, /reflect why <topic>, /reflect search <query>,
+  /reflect status, /reflect note, /reflect improve.
 allowed-tools: Read, Bash, Glob, Grep
 hooks:
   SessionStart:
