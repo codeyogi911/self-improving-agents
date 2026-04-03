@@ -192,13 +192,22 @@ The static briefing covers everything above the freshness threshold. When workin
 
 Output goes to the conversation (not to `context.md`) and includes only the most relevant decisions, rules, file knowledge, and failure patterns for the specified topic or files.
 
-## Session-Start Reminders
+## Session-Start Behavior
 
-After installing, `/reflect` registers a lightweight SessionStart hook. At the start of each session, it checks if new Entire sessions exist since the last analysis. If so, it prints a reminder:
+After installing, `/reflect` registers a lightweight SessionStart hook. At the start of each session, it checks if new Entire sessions exist since the last analysis. What happens next depends on the `session_start` setting in `.reflect/config.yaml`:
 
-> Reflect: New sessions detected since last /reflect. Run /reflect to capture recent insights.
+| Mode | Behavior |
+|------|----------|
+| `auto` (default) | Automatically runs `/reflect` to analyze new sessions and regenerate context |
+| `manual` | Prints a reminder: "Run /reflect to capture recent insights." |
 
-This is non-blocking — it never interrupts your work, just nudges you to reflect when there's new evidence to process.
+To switch to manual mode:
+```yaml
+# .reflect/config.yaml
+session_start: manual
+```
+
+By default, every new session starts with fresh context — no manual intervention needed. Switch to `manual` if you prefer to control when analysis runs.
 
 ## How Bake-In Works
 

@@ -39,3 +39,5 @@ A Claude Code skill called `/reflect` — portable, repo-owned memory for AI cod
 
 - When writing code that shells out to external CLIs or APIs, verify available commands/endpoints with `--help` or reference docs before implementation — don't assume command signatures.
 - For changes that affect core architecture (learning mechanism, data flow, required dependencies), confirm the design decision (optional vs required, additive vs replacement) with the user before implementing.
+
+@.reflect/context.md

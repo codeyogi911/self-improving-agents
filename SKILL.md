@@ -35,6 +35,11 @@ You read from that evidence substrate to answer "why": why was this decision
 made, what failed before, what does the AI need to know right now. You compile
 context briefings that supplement (never replace) the project's CLAUDE.md.
 
+**Auto-run mode**: If the SessionStart hook output contains `REFLECT_AUTO_RUN`,
+treat this as an implicit `/reflect` invocation — run the default Analyze command
+(last 5 sessions) with no arguments. This happens when `.reflect/config.yaml`
+has `session_start: auto` and new sessions exist since the last analysis.
+
 Parse $ARGUMENTS to determine which command to run:
 
 1. Strip "and bake" if present → set bake flag (combinable with all commands)
@@ -406,6 +411,7 @@ via `@.reflect/context.md`. This is a generated overlay, not a source of truth.
    - `max_lines: 150`
    - `half_life_days: 60`
    - `freshness_threshold: 0.3`
+   - `session_start: auto` (`auto` runs /reflect on new sessions; `manual` just reminds)
 
 3. **Gather insights**: Read all `.reflect/insights/*.md`. For each:
    - Parse `last_seen` from frontmatter.
