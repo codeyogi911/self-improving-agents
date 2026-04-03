@@ -7,13 +7,19 @@ description: >
   interpretations as structured evidence (.reflect/) and compiles context
   briefings for future sessions. Core commands: /reflect (analyze sessions),
   /reflect why <file> (decision trail with receipts), /reflect context
-  (compile context briefing). Also: /reflect what-failed <topic>,
-  /reflect status, /reflect search. Trigger on "reflect", "session analysis",
+  (compile context briefing), /reflect brief <topic-or-files> (task-focused
+  context). Also: /reflect what-failed <topic>, /reflect status,
+  /reflect search. Trigger on "reflect", "session analysis",
   "what went wrong", "what can I improve", "why did we", "what failed".
 allowed-tools: Read, Edit, Bash, Glob, Grep
+hooks:
+  SessionStart:
+    - hooks:
+        - type: command
+          command: "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
 metadata:
   author: shashwatjain
-  version: '2.0'
+  version: '3.0'
 ---
 
 # Reflect — Portable Repo Memory
@@ -37,6 +43,7 @@ Parse $ARGUMENTS to determine which command to run:
    - `what-failed <topic>` → go to **Command: What-Failed**
    - `context` → go to **Command: Context**
    - `status` → go to **Command: Status**
+   - `brief <topic-or-files>` → go to **Command: Brief**
    - `search <query>` → go to **Command: Search**
    - Everything else → go to **Command: Analyze** (the default)
 
@@ -92,7 +99,17 @@ For the default Analyze command, further parse remaining $ARGUMENTS:
      > `.reflect/decisions/`, `.reflect/insights/`, and `.reflect/files/`.
      > Those should be committed; `context.md` should be regenerated locally."
 
-5. **Size budget**: Check the total size of `.reflect/`:
+5. **Auto-wire context loading**: Check if `CLAUDE.md` exists in the project root.
+   If it does, check whether it already contains `@.reflect/context.md`.
+   If NOT present, append this line to CLAUDE.md:
+   ```
+   @.reflect/context.md
+   ```
+   This ensures the dynamic context briefing is automatically loaded in every
+   future session. Do this silently — no user prompt needed. If `CLAUDE.md` does
+   not exist, skip this step (don't create CLAUDE.md just for this).
+
+6. **Size budget**: Check the total size of `.reflect/`:
    ```bash
    du -sh .reflect/ 2>/dev/null
    ```
@@ -397,8 +414,11 @@ via `@.reflect/context.md`. This is a generated overlay, not a source of truth.
      default (60) for `temporal`.
    - Exclude insights where `contradicted_by` is set (they've been superseded).
    - Filter out insights below freshness threshold.
-   - Calculate expiry date: the future date when freshness will drop below the
-     threshold, given the half-life formula. Include this in context.md output.
+   - Calculate days since last seen and assign a **staleness tier**:
+     - **fresh** (freshness > 0.7): no action cue needed
+     - **aging** (freshness 0.3–0.7): include "verify before relying on this"
+     - **fading** (freshness < 0.3 but still included): include "verify against
+       current code before using"
    - Cross-check each insight against CLAUDE.md rules. If an insight contradicts
      or conflicts with a human-authored rule in CLAUDE.md, exclude it from
      context.md and log a warning in the summary output.
@@ -422,12 +442,9 @@ via `@.reflect/context.md`. This is a generated overlay, not a source of truth.
    - Omit empty sections.
    - Total must stay under the line budget.
 
-8. Write to `.reflect/context.md`.
-
-9. If `@.reflect/context.md` is NOT already in `CLAUDE.md`, tell the user:
-   > "Tip: You can add `@.reflect/context.md` to your CLAUDE.md to include
-   > this briefing as supplementary context. Your CLAUDE.md rules always
-   > take precedence — context.md only adds evidence-backed context."
+8. Write to `.reflect/context.md`. Use human-readable staleness in Active Rules
+   entries — format each entry with its staleness tier and days-ago cue rather
+   than raw expiry dates (see `templates/context-format.md` for the format).
 
 ---
 
@@ -469,6 +486,66 @@ Simple grep across the evidence store — not a semantic search engine.
 
 3. Read matched files and present the top 10 most relevant results with type
    labels and brief excerpts.
+
+---
+
+## Command: Brief (task-focused context)
+
+**Usage**: `/reflect brief <topic-or-files>`
+
+Generates a focused, task-specific context overlay for the current work. Unlike
+the static `context.md` briefing (which covers everything above the freshness
+threshold), this command selects only knowledge relevant to a specific topic or
+set of files. Output goes to stdout, not to `context.md`.
+
+### Steps:
+
+1. Parse $ARGUMENTS after "brief" to identify:
+   - **File paths**: arguments containing `/` or `.` (e.g., `src/auth/middleware.ts`)
+   - **Topic keywords**: everything else (e.g., `auth`, `database migrations`)
+
+2. **File-based search** (if file paths provided):
+   - Encode each path (`/` → `--`) and check `.reflect/files/<encoded-path>.md`.
+   - Read matched file knowledge maps.
+   - Extract linked `sessions[]`, `decisions[]`, and `insights[]` from frontmatter.
+   - Read those linked artifacts.
+
+3. **Topic-based search** (if topic keywords provided):
+   - Grep `.reflect/insights/*.md`, `.reflect/decisions/*.md`, and
+     `.reflect/sessions/*.md` for the keywords.
+   - Read matched files and extract relevant content.
+
+4. **Rank results** by relevance:
+   - Direct file match (from file knowledge map links) → highest priority
+   - Topic keyword match in title/frontmatter → high priority
+   - Topic keyword match in body → medium priority
+   - More recent artifacts rank higher within each tier
+
+5. **Output a focused briefing** (max 50 lines) in this format:
+
+   ```markdown
+   ## Brief: <topic/files>
+   <!-- Focused context for current task — generated by /reflect brief -->
+
+   ### Relevant Decisions
+   - **<Decision title>**: <One-line summary> (<date>)
+
+   ### Applicable Rules
+   - <Insight relevant to this task> (<confidence>, <N>x)
+
+   ### File Context
+   - `<file-path>`: <Key facts and pitfalls>
+
+   ### Watch Out
+   - <Relevant failure pattern> (seen <N>x)
+   ```
+
+   Omit any section that would be empty. Prefer fewer, more relevant entries
+   over comprehensive coverage.
+
+6. If no relevant knowledge is found, report:
+   > "No knowledge found for '<topic/files>'. Run `/reflect` to analyze sessions
+   > that touched this area."
 
 ---
 

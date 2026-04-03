@@ -293,12 +293,16 @@ Omit empty sections. Trim from the bottom of each section if over budget.
 
 ### 4.3 Entry format
 
-Each Active Rules entry must include:
-- The actionable rule text
-- Confidence level
-- Times seen
-- Last seen date
-- Approximate expiry date (when freshness will drop below threshold)
+Each Active Rules entry uses human-readable staleness tiers instead of raw dates.
+Format: `- <Rule> (<CONFIDENCE>, <N>x) — <tier>, <cue>`
+
+Staleness tiers (based on freshness score):
+- **fresh** (freshness > 0.7): `confirmed N days ago`
+- **aging** (freshness 0.3–0.7): `last confirmed N days ago — verify before relying on this`
+- **fading** (freshness < 0.3): `last confirmed N days ago — verify against current code before using`
+
+Human-readable action cues trigger verification behavior more reliably than raw
+timestamps or expiry dates.
 
 ### 4.4 Output header
 

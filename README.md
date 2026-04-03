@@ -20,7 +20,7 @@ Session → Entire CLI captures → /reflect interprets → .reflect/ evidence s
 2. `/reflect` interprets transcripts: extracts decisions, patterns, and insights from that evidence
 3. Interpretations are stored in `.reflect/` — structured, git-portable, agent-agnostic
 4. A **compiled briefing** (`.reflect/context.md`) is generated with the most relevant current context
-5. Optionally reference `@.reflect/context.md` from your `CLAUDE.md` as supplementary context
+5. On first run, `/reflect` auto-wires `@.reflect/context.md` into your `CLAUDE.md` so every future session gets the briefing automatically
 
 **Important**: `CLAUDE.md` remains the human-owned source of truth for your project rules. `context.md` is a generated briefing that supplements it — it never overrides or replaces human-authored instructions.
 
@@ -39,7 +39,8 @@ If Entire CLI isn't installed, `/reflect` will detect it and walk you through se
 git clone https://github.com/codeyogi911/reflect.git && \
 mkdir -p ~/.claude/skills/reflect && \
 ln -sf "$(cd reflect && pwd)/SKILL.md" ~/.claude/skills/reflect/SKILL.md && \
-ln -sf "$(cd reflect && pwd)/templates" ~/.claude/skills/reflect/templates
+ln -sf "$(cd reflect && pwd)/templates" ~/.claude/skills/reflect/templates && \
+ln -sf "$(cd reflect && pwd)/hooks" ~/.claude/skills/reflect/hooks
 ```
 
 ### Step by step
@@ -54,6 +55,7 @@ mkdir -p ~/.claude/skills/reflect
 # 3. Symlink the skill files (keeps you up to date with git pull)
 ln -sf "$(cd reflect && pwd)/SKILL.md" ~/.claude/skills/reflect/SKILL.md
 ln -sf "$(cd reflect && pwd)/templates" ~/.claude/skills/reflect/templates
+ln -sf "$(cd reflect && pwd)/hooks" ~/.claude/skills/reflect/hooks
 ```
 
 ### Verify installation
@@ -101,7 +103,9 @@ rm -rf ~/.claude/skills/reflect
 
 ```text
 /reflect why src/auth/middleware.ts    — decision trail for a file
-/reflect context                       — regenerate the context briefing
+/reflect brief auth middleware         — task-focused context for current work
+/reflect brief src/auth/               — file-focused context overlay
+/reflect context                       — regenerate the full context briefing
 /reflect what-failed testing           — failure patterns about testing
 /reflect status                        — evidence store dashboard
 /reflect search database               — search all knowledge artifacts
@@ -142,15 +146,11 @@ See [`SPEC.md`](SPEC.md) for the full, agent-agnostic format specification — u
 
 ### Setup
 
-Optionally add one line to your `CLAUDE.md`:
+On first run, `/reflect` automatically adds `@.reflect/context.md` to your `CLAUDE.md`. This means every future session gets the briefing without any manual setup. If you prefer manual control, remove the line and it won't be re-added.
 
-```markdown
-@.reflect/context.md
-```
+The briefing supplements your `CLAUDE.md` with evidence-backed context:
 
-This supplements your `CLAUDE.md` with evidence-backed context:
-
-- **Active Rules** — HIGH-confidence insights from real session evidence, with expiry dates
+- **Active Rules** — HIGH-confidence insights with human-readable staleness cues
 - **Key Decisions** — architectural choices with reasoning (these don't decay)
 - **Watch Out** — failure patterns to avoid
 
@@ -168,6 +168,37 @@ Temporal insights decay over time. Architectural insights decay much more slowly
 | 365 days | 0.02 | 0.50 |
 
 Stale insights drop out of the briefing automatically. Recurring patterns stay fresh. Contradicted insights are excluded regardless of freshness.
+
+### Human-Readable Staleness
+
+Context briefing entries use action cues instead of raw dates:
+
+```
+- Always check CLI --help before assuming flags (HIGH, 3x) — fresh, confirmed 2 days ago
+- Run migrations after schema changes (MEDIUM, 2x) — aging, last confirmed 45 days ago — verify before relying on this
+- Use legacy auth endpoint for SSO (HIGH, 5x) — fading, last confirmed 89 days ago — verify against current code before using
+```
+
+This nudges verification behavior rather than requiring mental arithmetic on expiry dates.
+
+### Task-Focused Context (`/reflect brief`)
+
+The static briefing covers everything above the freshness threshold. When working on a specific area, use `/reflect brief` for focused context:
+
+```text
+/reflect brief auth middleware     — topic-focused: shows only auth-related knowledge
+/reflect brief src/auth/           — file-focused: shows decisions and insights for those files
+```
+
+Output goes to the conversation (not to `context.md`) and includes only the most relevant decisions, rules, file knowledge, and failure patterns for the specified topic or files.
+
+## Session-Start Reminders
+
+After installing, `/reflect` registers a lightweight SessionStart hook. At the start of each session, it checks if new Entire sessions exist since the last analysis. If so, it prints a reminder:
+
+> Reflect: New sessions detected since last /reflect. Run /reflect to capture recent insights.
+
+This is non-blocking — it never interrupts your work, just nudges you to reflect when there's new evidence to process.
 
 ## How Bake-In Works
 
