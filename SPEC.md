@@ -1,6 +1,6 @@
 # `.reflect/` Evidence Store Specification
 
-**Version**: 1.0.0
+**Version**: 1.1.0
 **Status**: Draft
 
 This document specifies the `.reflect/` directory format — a portable, repo-owned
@@ -41,6 +41,8 @@ and the contract for generating a compiled context briefing.
 │   └── <slug>.md
 ├── files/                # File knowledge cache (convenience index)
 │   └── <encoded-path>.md
+├── traces/               # Evidence index for fast search (convenience)
+│   └── index.md
 └── history/              # Archived stale artifacts
 ```
 
@@ -51,6 +53,7 @@ sessions  →  the raw evidence (what happened)
 decisions →  durable choices extracted from sessions (what was decided)
 insights  →  recurring patterns extracted from sessions (what was learned)
 files     →  convenience index linking files to sessions/decisions/insights
+traces    →  evidence index for grep-friendly search across sessions
 context.md → compiled view for agent consumption (generated, not canonical)
 ```
 
@@ -72,7 +75,7 @@ Field names use `snake_case`. Dates use ISO 8601 (`YYYY-MM-DD`).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `schema_version` | string | yes | `"1.0"` |
+| `schema_version` | string | yes | `"1.1"` |
 | `session_id` | string | yes | Unique session identifier |
 | `date` | string | yes | ISO 8601 date or datetime |
 | `branch` | string | no | Git branch name |
@@ -81,6 +84,7 @@ Field names use `snake_case`. Dates use ISO 8601 (`YYYY-MM-DD`).
 | `duration_estimate` | string | no | e.g., `"45min"` |
 | `token_efficiency` | enum | no | `low` \| `moderate` \| `high` |
 | `outcome` | enum | yes | `success` \| `partial` \| `failure` |
+| `env_snapshot` | object | no | Starting conditions: `branch`, `recent_commits`, `dirty_files` |
 
 #### Body sections
 
@@ -89,6 +93,7 @@ Field names use `snake_case`. Dates use ISO 8601 (`YYYY-MM-DD`).
 | Intent | yes | What the user was trying to accomplish (1-2 sentences) |
 | Outcome | yes | Result status and brief description |
 | Approach | no | Numbered steps of what was tried |
+| Evidence | no | Curated raw fragments: error messages, surprising outputs, retry sequences |
 | Patterns Observed | no | Named patterns with descriptions |
 | Decisions Made | no | References to decision record IDs |
 | Key Context Captured | no | File-specific facts learned |
@@ -103,7 +108,7 @@ IDs are sequential four-digit numbers: `0001`, `0002`, etc.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `schema_version` | string | yes | `"1.0"` |
+| `schema_version` | string | yes | `"1.1"` |
 | `id` | string | yes | Four-digit sequential ID |
 | `title` | string | yes | Short decision title |
 | `date` | string | yes | ISO 8601 date |
@@ -140,7 +145,7 @@ Slugs are lowercase, hyphenated, descriptive (e.g., `verify-cli-flags`).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `schema_version` | string | yes | `"1.0"` |
+| `schema_version` | string | yes | `"1.1"` |
 | `id` | string | yes | Same as slug |
 | `title` | string | yes | Short actionable title |
 | `confidence` | enum | yes | `LOW` \| `MEDIUM` \| `HIGH` |
@@ -215,7 +220,7 @@ Example: `src/auth/middleware.ts` → `src--auth--middleware.ts.md`
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `schema_version` | string | yes | `"1.0"` |
+| `schema_version` | string | yes | `"1.1"` |
 | `file` | string | yes | Original file path |
 | `last_updated` | string | yes | ISO 8601 date |
 | `sessions` | string[] | no | Session IDs that touched this file |
@@ -236,7 +241,46 @@ File knowledge maps are a **convenience cache** — they are rebuilt from sessio
 data and are not considered durable primitives. They may be deleted and
 regenerated without data loss.
 
-### 3.5 Index
+### 3.5 Trace Index
+
+**Location**: `.reflect/traces/index.md`
+
+A rolling lookup table mapping session IDs to key evidence fragments (error
+signatures, surprising discoveries, environment anomalies). This enables fast
+grep-based search across session evidence without reading every session file.
+
+The trace index is a **convenience cache** — it is rebuilt from session data and
+can be deleted and regenerated without data loss.
+
+#### Structure
+
+```markdown
+# Trace Index
+<!-- Auto-maintained by /reflect — convenience index for evidence search -->
+
+| Session | Date | Key Evidence | Type |
+|---------|------|-------------|------|
+| <session-id> | <YYYY-MM-DD> | `<error or discovery>` — <brief context> | error |
+| <session-id> | <YYYY-MM-DD> | <pattern or anomaly> | anti-pattern |
+```
+
+#### Type values
+
+| Type | Description |
+|------|-------------|
+| `error` | Error message or exception from a failed operation |
+| `anti-pattern` | A detected anti-pattern in agent or code behavior |
+| `discovery` | Surprising environment or codebase finding |
+| `retry` | A retry sequence that indicates thrashing |
+| `env` | Environment-related finding (missing tool, version mismatch) |
+
+#### Maintenance
+
+- Append new rows when writing session artifacts during analysis.
+- Cap at 100 rows. When exceeding, remove the oldest entries.
+- Each session should contribute 0-3 rows (only noteworthy evidence).
+
+### 3.6 Index
 
 **Location**: `.reflect/index.md`
 
@@ -284,22 +328,31 @@ typed records.
 
 | Section | Source | Max entries | Decay? |
 |---------|--------|-------------|--------|
+| Recent Failures | Sessions with `outcome: partial\|failure` + recent anti-patterns | 3 | By recency |
 | Active Rules | Insights with confidence >= MEDIUM and freshness >= threshold | 15 | Yes |
 | Key Decisions | Decisions with `status: accepted` | 10 | No |
 | File Notes | File maps from last 5 sessions | 10 | By recency |
 | Watch Out | Insights with `category: anti-pattern \| pitfall`, not baked | 5 | Yes |
+| Archive References | Insights below freshness threshold, demoted not excluded | 5 | Yes |
 
 Omit empty sections. Trim from the bottom of each section if over budget.
+
+Insights below the freshness threshold are **demoted to Archive References**
+rather than excluded entirely. This preserves discoverability for regression
+debugging and cross-session transfer. Each archive entry is one line with the
+file path for deep-dive access.
 
 ### 4.3 Entry format
 
 Each Active Rules entry uses human-readable staleness tiers instead of raw dates.
 Format: `- <Rule> (<CONFIDENCE>, <N>x) — <tier>, <cue>`
 
-Staleness tiers (based on freshness score):
+Staleness tiers for **Active Rules** (freshness >= 0.3 only):
 - **fresh** (freshness > 0.7): `confirmed N days ago`
 - **aging** (freshness 0.3–0.7): `last confirmed N days ago — verify before relying on this`
-- **fading** (freshness < 0.3): `last confirmed N days ago — verify against current code before using`
+
+Insights below 0.3 do not appear in Active Rules — they are demoted to the
+**Archive References** section with a file path for deep-dive access.
 
 Human-readable action cues trigger verification behavior more reliably than raw
 timestamps or expiry dates.
@@ -338,6 +391,7 @@ session_start: auto      # "auto" regenerates context.md + nudges; "manual" just
 - `.reflect/decisions/`
 - `.reflect/insights/`
 - `.reflect/files/`
+- `.reflect/traces/`
 - `.reflect/config.yaml`
 
 ### Add to `.gitignore`
@@ -374,7 +428,7 @@ limit, archive stale artifacts to `.reflect/history/`. Stale means:
 ## 9. Schema Evolution
 
 All artifacts include a `schema_version` field in frontmatter. The current
-version is `"1.0"`.
+version is `"1.1"`.
 
 When the schema changes:
 1. Bump the version number.
@@ -411,6 +465,20 @@ A compliant **context generator** must:
 ---
 
 ## Changelog
+
+### 1.1.0 (2026-04-03)
+- Bump `schema_version` to `"1.1"` across all artifact types.
+- Add optional `env_snapshot` field to session frontmatter.
+- Add optional `Evidence` body section to sessions for curated raw fragments.
+- Add Trace Index artifact type (`.reflect/traces/index.md`) for fast evidence search.
+- Add `Recent Failures` section to context briefing (before Active Rules).
+- Add `Archive References` section to context briefing — insights below freshness
+  threshold are demoted rather than excluded, preserving discoverability.
+- Bump context sections table with new sections.
+- **Migration**: Existing `"1.0"` artifacts remain valid — all new fields are
+  optional and consumers treat missing fields as absent (per section 9).
+  Readers seeing `"1.0"` should not expect `env_snapshot`, `Evidence`, or
+  trace index entries. Readers seeing `"1.1"` may encounter them.
 
 ### 1.0.0 (2026-04-02)
 - Initial specification extracted from `/reflect` skill implementation.

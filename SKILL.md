@@ -95,7 +95,7 @@ For the default Analyze command, further parse remaining $ARGUMENTS:
 
 3. Ensure the `.reflect/` knowledge store exists:
    ```bash
-   mkdir -p .reflect/sessions .reflect/decisions .reflect/insights .reflect/files .reflect/history
+   mkdir -p .reflect/sessions .reflect/decisions .reflect/insights .reflect/files .reflect/traces .reflect/history
    ```
 
 4. Recommend `.gitignore` for generated artifacts:
@@ -184,6 +184,13 @@ Parse session data for these patterns:
 - **Time sinks** — disproportionate effort relative to complexity
 - **Repeated manual steps** — things that could be automated
 
+**Evidence capture:** For each pattern identified, preserve 1-3 key raw fragments
+from the session transcript — the specific error message, the command that
+revealed the issue, the retry sequence, or the tool output that was surprising.
+These go into the session's `## Evidence` section and enable causal reasoning
+in future sessions (understanding *why* something failed, not just *that* it
+failed).
+
 ### Step 3: Decision Extraction
 
 While analyzing sessions, watch for **architectural or design choices** where
@@ -235,9 +242,26 @@ alternatives were considered. For each decision found:
 
 Read the relevant format templates from the `templates/` directory.
 
+**Validation gate:** Before writing any artifact, verify required fields:
+- `schema_version` is present and set to `"1.1"`
+- `date` is present and valid ISO 8601 format
+- `session_id` (sessions) or `id` (decisions/insights) is present
+- `outcome` (sessions) is one of `success`, `partial`, `failure`
+- `confidence` (decisions/insights) is one of `LOW`, `MEDIUM`, `HIGH`
+- `category` (insights) is a recognized value
+
+If a **required** field fails validation, do NOT write the artifact — report the
+error and skip it. Required fields are structural; a malformed date or missing
+ID makes the artifact unparseable by downstream consumers (context generation,
+trace indexing, freshness calculation). Optional fields (`env_snapshot`,
+`token_efficiency`, `duration_estimate`, etc.) may be absent without blocking.
+
 **For each session analyzed:**
 1. Read `templates/session-format.md` for the format.
 2. Write a session summary to `.reflect/sessions/YYYY-MM-DD_<session-id>.md`.
+3. If the session produced noteworthy evidence fragments (errors, discoveries,
+   retries), append rows to `.reflect/traces/index.md`. Create the file from
+   the SPEC template if it doesn't exist. Cap at 100 rows total.
 
 **For each new or updated insight:**
 1. Read `templates/insight-format.md` for the format.
@@ -414,12 +438,15 @@ via `@.reflect/context.md`. This is a generated overlay, not a source of truth.
      Use half_life_days = 365 for `relevance_type: architectural` insights,
      default (60) for `temporal`.
    - Exclude insights where `contradicted_by` is set (they've been superseded).
-   - Filter out insights below freshness threshold.
-   - Calculate days since last seen and assign a **staleness tier**:
+   - Partition insights by freshness:
+     - **Active** (freshness >= threshold): include in Active Rules section.
+     - **Archived** (freshness < threshold): demote to Archive References section
+       (max 5, sorted by `times_seen` descending). These remain discoverable for
+       regression debugging and cross-session transfer.
+   - Calculate days since last seen and assign a **staleness tier** for Active Rules:
      - **fresh** (freshness > 0.7): no action cue needed
      - **aging** (freshness 0.3–0.7): include "verify before relying on this"
-     - **fading** (freshness < 0.3 but still included): include "verify against
-       current code before using"
+     Insights below 0.3 go to Archive References, not Active Rules.
    - Cross-check each insight against CLAUDE.md rules. If an insight contradicts
      or conflicts with a human-authored rule in CLAUDE.md, exclude it from
      context.md and log a warning in the summary output.
@@ -435,11 +462,21 @@ via `@.reflect/context.md`. This is a generated overlay, not a source of truth.
 6. **Gather failure patterns**: From insights, filter `category: anti-pattern`
    or `category: pitfall` that are NOT baked.
 
+6b. **Gather recent failures**: Collect the last 3 items from:
+    - Sessions with `outcome: partial` or `outcome: failure` (from frontmatter).
+    - Anti-pattern/pitfall insights from recent sessions.
+    Sort by date descending. For each, include a one-line evidence pointer
+    (error message, pattern name, or session ID). These populate the
+    `## Recent Failures` section, placed before Active Rules so agents
+    start sessions aware of what didn't work.
+
 7. **Generate context.md** following the template format:
+   - Recent Failures: max 3 entries (before Active Rules)
    - Active Rules: max 15 entries
    - Key Decisions: max 10 entries
    - File Notes: max 10 entries
    - Watch Out: max 5 entries
+   - Archive References: max 5 entries (insights below freshness threshold)
    - Omit empty sections.
    - Total must stay under the line budget.
 
