@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.5.1",
+  "checkpoint_id": "2bdba41fe8dd",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 5,
+  "files_touched": [
+    ".reflect/context.md",
+    ".reflect/decisions/0001-session-start-default-auto.md",
+    ".reflect/decisions/0002-agent-agnostic-evidence-store.md",
+    ".reflect/index.md",
+    ".reflect/insights/confirm-architecture-decisions.md",
+    ".reflect/insights/keep-descriptions-aligned.md",
+    ".reflect/insights/verify-cli-signatures.md",
+    ".reflect/sessions/2026-04-02_073406f1.md",
+    ".reflect/sessions/2026-04-02_14431d42.md",
+    ".reflect/sessions/2026-04-02_3f10d4ad.md",
+    ".reflect/sessions/2026-04-02_e179abd8.md",
+    ".reflect/sessions/2026-04-03_56cd9d49.md",
+    "CLAUDE.md",
+    "README.md",
+    "SKILL.md",
+    "SPEC.md",
+    "hooks/session-start.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/2b/dba41fe8dd/0/metadata.json",
+      "transcript": "/2b/dba41fe8dd/0/full.jsonl",
+      "content_hash": "/2b/dba41fe8dd/0/content_hash.txt",
+      "prompt": "/2b/dba41fe8dd/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 70,
+    "cache_creation_tokens": 57430,
+    "cache_read_tokens": 2161031,
+    "output_tokens": 16394,
+    "api_call_count": 54
+  }
+}
