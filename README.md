@@ -198,7 +198,7 @@ After installing, `/reflect` registers a lightweight SessionStart hook. At the s
 
 | Mode | Behavior |
 |------|----------|
-| `auto` (default) | Automatically runs `/reflect` to analyze new sessions and regenerate context |
+| `auto` (default) | Regenerates `context.md` from existing evidence and nudges if new sessions exist |
 | `manual` | Prints a reminder: "Run /reflect to capture recent insights." |
 
 To switch to manual mode:
@@ -207,7 +207,7 @@ To switch to manual mode:
 session_start: manual
 ```
 
-By default, every new session starts with fresh context — no manual intervention needed. Switch to `manual` if you prefer to control when analysis runs.
+In **auto** mode, every new session starts with a fresh context briefing compiled from existing evidence — no dirty working tree, no surprise commits. If new unanalyzed sessions exist, context.md includes a nudge comment so you know when to run `/reflect` for full analysis. In **manual** mode, you get a text reminder instead.
 
 ## How Bake-In Works
 

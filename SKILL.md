@@ -36,9 +36,11 @@ made, what failed before, what does the AI need to know right now. You compile
 context briefings that supplement (never replace) the project's CLAUDE.md.
 
 **Auto-run mode**: If the SessionStart hook output contains `REFLECT_AUTO_RUN`,
-treat this as an implicit `/reflect` invocation — run the default Analyze command
-(last 5 sessions) with no arguments. This happens when `.reflect/config.yaml`
-has `session_start: auto` and new sessions exist since the last analysis.
+run **only** the Context command (regenerate `.reflect/context.md` from existing
+evidence). This keeps the briefing fresh without writing new committable artifacts.
+If unanalyzed sessions exist, include a nudge line in context.md:
+`<!-- N new sessions since last /reflect — run /reflect to capture new evidence -->`
+Full analysis with artifact writes requires an explicit `/reflect` invocation.
 
 Parse $ARGUMENTS to determine which command to run:
 
@@ -411,7 +413,7 @@ via `@.reflect/context.md`. This is a generated overlay, not a source of truth.
    - `max_lines: 150`
    - `half_life_days: 60`
    - `freshness_threshold: 0.3`
-   - `session_start: auto` (`auto` runs /reflect on new sessions; `manual` just reminds)
+   - `session_start: auto` (`auto` regenerates context.md + nudges; `manual` just reminds)
 
 3. **Gather insights**: Read all `.reflect/insights/*.md`. For each:
    - Parse `last_seen` from frontmatter.
@@ -451,6 +453,14 @@ via `@.reflect/context.md`. This is a generated overlay, not a source of truth.
 8. Write to `.reflect/context.md`. Use human-readable staleness in Active Rules
    entries — format each entry with its staleness tier and days-ago cue rather
    than raw expiry dates (see `templates/context-format.md` for the format).
+
+9. **Nudge for unanalyzed sessions** (auto-run or manual): After writing
+   context.md, check if Entire has sessions newer than the most recent
+   `.reflect/sessions/*.md` file. If so, append a comment to context.md:
+   ```
+   <!-- N new sessions since last /reflect — run /reflect to capture new evidence -->
+   ```
+   This ensures the agent (and user) are aware of uncaptured evidence.
 
 ---
 

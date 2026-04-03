@@ -62,3 +62,4 @@ human-owned CLAUDE.md, never replaces it.
 - **Watch Out**: Include anti-pattern and pitfall insights not yet baked. Max 5 entries.
 - **Omit any section** that would be empty.
 - If total content exceeds the line budget, trim from the bottom of each section (least important items first).
+- **Nudge for unanalyzed sessions**: After generating the file, if Entire has sessions newer than the most recent `.reflect/sessions/*.md`, append: `<!-- N new sessions since last /reflect — run /reflect to capture new evidence -->`. This is a no-op for git (context.md is gitignored) but visible to agents loading the file.

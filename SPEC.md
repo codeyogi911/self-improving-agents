@@ -325,7 +325,7 @@ timestamps or expiry dates.
 max_lines: 150           # Line budget for context.md
 half_life_days: 60       # Default half-life for temporal insights
 freshness_threshold: 0.3 # Minimum freshness for context.md inclusion
-session_start: auto      # "auto" runs /reflect on new sessions; "manual" just reminds
+session_start: auto      # "auto" regenerates context.md + nudges; "manual" just reminds
 ```
 
 ---
