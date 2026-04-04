@@ -112,55 +112,19 @@ tunes sections to match what their project actually needs.
 
 ---
 
-## Digging Deeper from context.md
+## Digging Deeper
 
-The injected `context.md` is a briefing — a starting point, not the full story.
-When an entry is relevant to your current task, **go deeper before acting on it**.
+`context.md` is a briefing — a starting point, not the full story. When an entry
+is relevant to your current task, spawn the **Keeper** agent to investigate.
+Keeper searches context.md, runs `reflect search`, digs into raw checkpoints
+via `entire explain`, and returns a sourced narrative.
 
-Each entry includes a checkpoint reference like `(checkpoint 90e2641946db)`.
-Use the `entire` CLI to explore the raw evidence behind any signal:
-
-- **Expand a checkpoint** — get the full session context behind a context.md entry:
-  ```bash
-  entire explain --checkpoint <id>         # detailed view with prompts + files
-  entire explain --checkpoint <id> --full  # full parsed transcript
-  ```
-
-- **Browse recent sessions** — find relevant sessions for a topic:
-  ```bash
-  entire explain                           # list checkpoints on current branch
-  entire explain --session <id>            # filter to a specific session
-  entire sessions list                     # list all sessions across worktrees
-  ```
-
-- **Explain a commit** — understand what happened around a specific change:
-  ```bash
-  entire explain --commit <sha>
-  ```
-
-**When to dig deeper:**
-Read `.reflect/format.yaml` to understand which sections exist in context.md.
-Any entry that relates to your current task deserves a deeper look — expand
-the linked checkpoint or commit to get the full story before acting on it.
-Entries about pitfalls, mistakes, or reverted work are STOP signals — read
-the evidence before proceeding.
-
-**When the briefing is enough:**
-- The entry gives you a clear, actionable fact (e.g., "use os.path.realpath not abspath")
-- You're doing unrelated work and the entry is just background context
-
----
-
-## Agent: reflect-query
-
-A `reflect-query` agent ships with this skill (installed to `.claude/agents/`).
-Spawn it for deep investigations that need multiple searches and evidence synthesis.
-It runs autonomously — searches context.md, runs `reflect why` and `reflect search`,
-digs into raw checkpoints, and returns a sourced narrative.
-
-Use it when a question needs more than a single `/reflect why` call — e.g., tracing
-a decision across multiple sessions, comparing what was tried vs what landed, or
-building onboarding context for a new contributor.
+Spawn Keeper when:
+- A context.md entry relates to what you're about to change
+- You need to trace a decision across multiple sessions
+- You want to understand what was tried vs what landed
+- An entry about pitfalls or reverted work is a STOP signal — let Keeper
+  verify the constraint before you proceed
 
 ---
 
