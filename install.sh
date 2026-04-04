@@ -29,6 +29,16 @@ fi
 
 echo "Skill installed: $SKILL_DST/SKILL.md"
 
+# ── Agents: install into .claude/agents/ ────────────────────────────
+AGENTS_SRC="$SCRIPT_DIR/skill/agents"
+AGENTS_DST="$TARGET_REPO/.claude/agents"
+
+if [ -d "$AGENTS_SRC" ]; then
+    mkdir -p "$AGENTS_DST"
+    cp "$AGENTS_SRC"/*.md "$AGENTS_DST/"
+    echo "Agents installed: $AGENTS_DST/"
+fi
+
 # ── Summary ──────────────────────────────────────────────────────────
 echo ""
 echo "Make sure $BIN_DIR is on your PATH."
