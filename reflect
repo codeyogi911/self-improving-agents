@@ -13,7 +13,7 @@ import os
 # Use realpath to resolve symlinks (install.sh symlinks into ~/.local/bin)
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
-from lib.init import cmd_init
+from lib.init import cmd_init, cmd_upgrade
 from lib.context import cmd_context
 from lib.search import cmd_search
 from lib.status import cmd_status
@@ -33,6 +33,9 @@ def main():
     # reflect init
     init_parser = subparsers.add_parser("init", help="Initialize .reflect/ with default format")
     init_parser.add_argument("--migrate", action="store_true", help="Migrate from legacy harness to format.yaml")
+
+    # reflect upgrade
+    subparsers.add_parser("upgrade", help="Upgrade format.yaml, skill, and agents to latest")
 
     # reflect context
     ctx = subparsers.add_parser("context", help="Generate context.md via subagent synthesis")
@@ -89,6 +92,7 @@ def main():
 
     commands = {
         "init": cmd_init,
+        "upgrade": cmd_upgrade,
         "context": cmd_context,
         "search": cmd_search,
         "status": cmd_status,

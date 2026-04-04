@@ -171,6 +171,49 @@ def _install_skill():
     print(f"Skill installed: {skill_dst}/SKILL.md")
 
 
+def cmd_upgrade(args):
+    """Upgrade .reflect/ to latest templates, skill, and agents."""
+    reflect_dir = Path(".reflect")
+
+    if not reflect_dir.exists():
+        print("No .reflect/ directory found. Run `reflect init` first.", file=sys.stderr)
+        return 1
+
+    # --- format.yaml ---
+    format_file = reflect_dir / "format.yaml"
+    template = _template_path("format.yaml")
+    if not template.exists():
+        print("Error: templates/format.yaml not found in reflect install.", file=sys.stderr)
+        return 1
+
+    new_content = template.read_text()
+    old_content = format_file.read_text() if format_file.exists() else ""
+
+    if old_content != new_content:
+        # Back up existing
+        if format_file.exists():
+            backup = reflect_dir / "format.yaml.bak"
+            shutil.copy2(format_file, backup)
+            print(f"Backed up format.yaml → format.yaml.bak")
+        shutil.copy2(template, format_file)
+        print("Updated format.yaml to latest template.")
+    else:
+        print("format.yaml already up to date.")
+
+    # --- config.yaml ---
+    config_file = reflect_dir / "config.yaml"
+    config_template = _template_path("config.yaml")
+    if config_template.exists() and not config_file.exists():
+        shutil.copy2(config_template, config_file)
+        print("Added config.yaml from template.")
+
+    # --- skill + hooks + agents ---
+    _install_skill()
+
+    print("Upgrade complete.")
+    return 0
+
+
 def _wire_agents():
     """Wire context.md into agent instruction files."""
     # Claude Code
