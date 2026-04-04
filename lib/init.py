@@ -143,8 +143,9 @@ def cmd_init(args):
         if not config.exists():
             config.write_text(DEFAULT_CONFIG_YAML)
 
-    # --- Step 3: Install skill + hooks ---
+    # --- Step 3: Install skill + hooks + agents ---
     _install_skill()
+    _install_agents()
 
     # --- Step 4: Agent wiring ---
     _wire_agents()
@@ -187,6 +188,23 @@ def _install_skill():
         shutil.copytree(hooks_src, hooks_dst)
 
     print(f"Skill installed: {skill_dst}/SKILL.md")
+
+
+def _install_agents():
+    """Copy skill/agents/*.md into .claude/agents/."""
+    repo_root = _reflect_repo_root()
+    agents_src = repo_root / "skill" / "agents"
+
+    if not agents_src.is_dir():
+        return
+
+    agents_dst = Path(".claude") / "agents"
+    agents_dst.mkdir(parents=True, exist_ok=True)
+
+    for agent_file in agents_src.glob("*.md"):
+        shutil.copy2(agent_file, agents_dst / agent_file.name)
+
+    print(f"Agents installed: {agents_dst}/")
 
 
 def _wire_agents():
