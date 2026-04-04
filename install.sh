@@ -7,7 +7,7 @@ REPO="codeyogi911/reflect"
 
 # ── Resolve latest version ────────────���────────────────────────────
 echo "Fetching latest version..."
-VERSION=$(curl -fsSL -o /dev/null -w '%{redirect_url}' \
+VERSION=$(curl -fsS -o /dev/null -w '%{redirect_url}' \
     "https://github.com/${REPO}/releases/latest" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
 
 if [ -z "$VERSION" ]; then
