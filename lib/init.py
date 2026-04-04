@@ -160,12 +160,34 @@ def _install_skill():
             shutil.rmtree(hooks_dst)
         shutil.copytree(hooks_src, hooks_dst)
 
-    # Copy agents into .claude/agents/
+    # Copy agents into .claude/agents/ and clean up stale ones
     if agents_src.is_dir():
         agents_dst = Path(".claude") / "agents"
         agents_dst.mkdir(parents=True, exist_ok=True)
+        manifest = agents_dst / ".reflect-agents"
+
+        # Read previous manifest to find stale agents
+        # Include known legacy names for bootstrap (before manifest existed)
+        LEGACY_AGENTS = {"reflect-query.md"}
+        old_agents = LEGACY_AGENTS.copy()
+        if manifest.exists():
+            old_agents |= set(manifest.read_text().splitlines())
+
+        # Install current agents
+        new_agents = set()
         for agent_file in agents_src.glob("*.md"):
             shutil.copy2(agent_file, agents_dst / agent_file.name)
+            new_agents.add(agent_file.name)
+
+        # Remove agents that reflect previously installed but no longer ships
+        for stale in old_agents - new_agents:
+            stale_path = agents_dst / stale
+            if stale_path.exists():
+                stale_path.unlink()
+                print(f"Removed stale agent: {stale}")
+
+        # Write updated manifest
+        manifest.write_text("\n".join(sorted(new_agents)) + "\n")
         print(f"Agent installed: .claude/agents/")
 
     print(f"Skill installed: {skill_dst}/SKILL.md")
