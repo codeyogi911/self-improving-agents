@@ -9,8 +9,8 @@ import re
 import sys
 from pathlib import Path
 
-from lib.evidence import gather_evidence
-from lib.context import load_format
+from reflect_cli.evidence import gather_evidence
+from reflect_cli.context import load_format
 
 
 def analyze_context_quality(context_md):

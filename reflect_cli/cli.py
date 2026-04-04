@@ -1,17 +1,7 @@
-#!/usr/bin/env python3
-"""reflect — repo-owned memory for AI coding agents.
-
-Reads raw evidence from Entire CLI and git history on demand.
-Generates context briefings via declarative format.yaml + Claude subagent.
-"""
+"""reflect CLI entry point for installed package."""
 
 import argparse
 import sys
-import os
-
-# Add the reflect repo to Python path so lib/ is importable
-# Use realpath to resolve symlinks (install.sh symlinks into ~/.local/bin)
-sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 from reflect_cli.init import cmd_init
 from reflect_cli.context import cmd_context

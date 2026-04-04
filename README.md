@@ -16,13 +16,25 @@
 
 ---
 
+## Install
+
+```bash
+# Recommended: pipx (isolated install, like `go install`)
+pipx install reflect-cli
+
+# Or: pip
+pip install reflect-cli
+
+# Or: Homebrew
+brew tap codeyogi911/tap && brew install reflect-cli
+
+# Or: curl installer (auto-detects best method)
+curl -fsSL https://raw.githubusercontent.com/codeyogi911/reflect/main/install.sh | bash
+```
+
 ## Quick Start
 
 ```bash
-# Install reflect
-git clone https://github.com/codeyogi911/reflect.git
-cd reflect && ./install.sh
-
 # Set up any repo
 cd ~/your-project
 reflect init          # installs Entire CLI, creates .reflect/, wires into CLAUDE.md
@@ -180,9 +192,10 @@ Claude's memory lives in `~/.claude/projects/` on your laptop — it doesn't tra
 ## Contributing
 
 1. Fork the repo
-2. Edit `lib/` — changes take effect immediately via symlinks
-3. Test: `python3 reflect context` or `python3 reflect why <topic>`
-4. Submit a PR
+2. `pip install -e .` for an editable install
+3. Edit `reflect_cli/` — changes take effect immediately
+4. Test: `reflect context` or `reflect why <topic>`
+5. Submit a PR
 
 ## License
 
