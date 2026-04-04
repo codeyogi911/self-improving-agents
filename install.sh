@@ -1,35 +1,53 @@
 #!/usr/bin/env bash
+# reflect installer — curl -fsSL https://raw.githubusercontent.com/codeyogi911/reflect/main/install.sh | bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO="codeyogi911/reflect"
+CLONE_DIR="${HOME}/.local/share/reflect"
 
-# ── CLI: symlink to ~/.local/bin ──────────────────────────────────────
-BIN_DIR="${HOME}/.local/bin"
-mkdir -p "$BIN_DIR"
-ln -sf "$SCRIPT_DIR/reflect" "$BIN_DIR/reflect"
-echo "CLI installed: $BIN_DIR/reflect"
+info()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
+err()   { printf '\033[1;31mError:\033[0m %s\n' "$*" >&2; exit 1; }
 
-# ── Skill: install into target repo ──────────────────────────────────
-# If run from within a git repo, install the skill there.
-# Otherwise install into the reflect repo itself.
-TARGET_REPO="${1:-$(git rev-parse --show-toplevel 2>/dev/null || echo "$SCRIPT_DIR")}"
+command_exists() { command -v "$1" >/dev/null 2>&1; }
 
-SKILL_SRC="$SCRIPT_DIR/skill/SKILL.md"
-SKILL_DST="$TARGET_REPO/.claude/skills/reflect"
+# ── Preflight ──────────────────────────────────────────────────────
+command_exists git    || err "git is required. Install it and try again."
+command_exists python3 || err "python3 is required (3.11+). Install it and try again."
 
-mkdir -p "$SKILL_DST"
-cp "$SKILL_SRC" "$SKILL_DST/SKILL.md"
-
-# Copy hooks if they exist
-HOOKS_DIR="$SCRIPT_DIR/hooks"
-if [ -d "$HOOKS_DIR" ]; then
-    rm -rf "$SKILL_DST/hooks"
-    cp -R "$HOOKS_DIR" "$SKILL_DST/hooks"
+# ── Clone or update ────────────────────────────────────────────────
+if [ -d "$CLONE_DIR" ]; then
+    info "Updating existing install..."
+    git -C "$CLONE_DIR" pull --ff-only origin main 2>/dev/null || {
+        info "Pull failed, re-cloning..."
+        rm -rf "$CLONE_DIR"
+        git clone "https://github.com/${REPO}.git" "$CLONE_DIR"
+    }
+else
+    info "Cloning reflect..."
+    git clone "https://github.com/${REPO}.git" "$CLONE_DIR"
 fi
 
-echo "Skill installed: $SKILL_DST/SKILL.md"
+# ── Install via pip ────────────────────────────────────────────────
+info "Installing reflect CLI..."
+if command_exists pipx; then
+    pipx install --force "$CLONE_DIR"
+elif command_exists pip; then
+    pip install --user "$CLONE_DIR"
+else
+    # Last resort: install pip via ensurepip, then install
+    python3 -m ensurepip --default-pip 2>/dev/null || true
+    python3 -m pip install --user "$CLONE_DIR" || err "Could not install. Please install pip or pipx and try again."
+fi
 
-# ── Summary ──────────────────────────────────────────────────────────
-echo ""
-echo "Make sure $BIN_DIR is on your PATH."
-echo "Run 'reflect init' in any git repo to get started."
+# ── Verify ─────────────────────────────────────────────────────────
+if command_exists reflect; then
+    info "reflect installed successfully!"
+    echo ""
+    reflect --help | head -3
+else
+    info "Install complete. Add ~/.local/bin to your PATH:"
+    echo ""
+    echo '  export PATH="$HOME/.local/bin:$PATH"'
+    echo ""
+    echo "Then restart your shell and run: reflect --help"
+fi

@@ -8,22 +8,24 @@ Repo-owned memory for AI coding agents. Reads raw evidence from Entire CLI sessi
 
 ## Structure
 
-- `reflect` — CLI entry point (Python)
-- `lib/` — CLI modules (evidence, context, init, why, search, status, improve)
-- `lib/evidence.py` — fixed evidence gathering pipeline (Entire CLI + git)
+- `reflect` — CLI entry point (legacy dev symlink, kept for backwards compat)
+- `reflect_cli/` — Python package (evidence, context, init, why, search, status, improve)
+- `reflect_cli/cli.py` — main entry point (used by pyproject.toml console_scripts)
+- `reflect_cli/evidence.py` — fixed evidence gathering pipeline (Entire CLI + git)
+- `pyproject.toml` — package config for pip/pipx distribution
 - `skill/SKILL.md` — skill source (dev copy; install copies to `.claude/skills/reflect/`)
 - `SPEC.md` — specification for `.reflect/` directory format
 - `hooks/session-start.sh` — SessionStart hook for context freshness (also linked from the skill dir)
-- `install.sh` — installer (symlinks CLI to `~/.local/bin`)
+- `install.sh` — curl-friendly installer (auto-detects pipx/pip/git)
 - `README.md` — user-facing docs
 - `ROADMAP.md` — future phases
 - `CLAUDE.md` — this file
 
 ## Development
 
-- Edit `lib/evidence.py` to change evidence gathering
-- Edit `lib/context.py` to change synthesis pipeline, system prompt, or validation
-- Edit `lib/` to change CLI commands
+- Edit `reflect_cli/evidence.py` to change evidence gathering
+- Edit `reflect_cli/context.py` to change synthesis pipeline, system prompt, or validation
+- Edit `reflect_cli/` to change CLI commands
 - Edit `.reflect/format.yaml` (in any repo) to customize context sections
 - Edit `skill/SKILL.md` to change the Claude Code skill (source of truth)
 - Test locally: `python3 reflect context` or `python3 reflect why <topic>`

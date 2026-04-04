@@ -13,7 +13,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from lib.evidence import gather_evidence, build_evidence_document, truncate_evidence
+from reflect_cli.evidence import gather_evidence, build_evidence_document, truncate_evidence
 
 
 # ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 cp "$ROOT/reflect" "$TMP/reflect"
 chmod +x "$TMP/reflect"
-cp -R "$ROOT/lib" "$TMP/lib"
+cp -R "$ROOT/reflect_cli" "$TMP/reflect_cli"
 
 cd "$TMP"
 git init -q
