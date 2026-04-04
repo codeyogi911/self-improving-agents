@@ -19,19 +19,17 @@
 ## Quick Start
 
 ```bash
-# Install reflect
-git clone https://github.com/codeyogi911/reflect.git
-cd reflect && ./install.sh
-
-# Set up any repo
-cd ~/your-project
-reflect init          # installs Entire CLI, creates .reflect/, wires into CLAUDE.md
-
-# Generate your first briefing
-reflect context
+curl -fsSL https://raw.githubusercontent.com/codeyogi911/reflect/main/install.sh | bash
 ```
 
-That's it. Your next Claude Code session will have project history injected automatically.
+Then in any git repo:
+
+```bash
+reflect init       # installs Entire CLI, creates .reflect/, wires into CLAUDE.md
+reflect context    # generate your first briefing
+```
+
+Your next Claude Code session will have project history injected automatically.
 
 ---
 
@@ -141,11 +139,13 @@ Use `/reflect improve` to analyze what's working and what's missing in your curr
 
 ## What `reflect init` Does
 
-- Installs [Entire CLI](https://entire.dev) if not found
-- Enables Entire for the repo
-- Creates `.reflect/` with default `format.yaml` and `config.yaml`
-- Installs the Claude Code skill to `.claude/skills/reflect/`
-- Wires `@.reflect/context.md` into `CLAUDE.md`
+Run it once per repo. It handles:
+
+- Installing [Entire CLI](https://entire.dev) if not found
+- Enabling Entire for the repo
+- Creating `.reflect/` with default `format.yaml` and `config.yaml`
+- Installing the Claude Code skill to `.claude/skills/reflect/`
+- Wiring `@.reflect/context.md` into `CLAUDE.md`
 
 ### What goes in git
 
@@ -179,10 +179,7 @@ Claude's memory lives in `~/.claude/projects/` on your laptop — it doesn't tra
 
 ## Contributing
 
-1. Fork the repo
-2. Edit `lib/` — changes take effect immediately via symlinks
-3. Test: `python3 reflect context` or `python3 reflect why <topic>`
-4. Submit a PR
+PRs welcome. Clone the repo, edits to `lib/` are live via symlink — no reinstall needed.
 
 ## License
 

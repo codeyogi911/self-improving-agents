@@ -1,35 +1,46 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-
-# ── CLI: symlink to ~/.local/bin ──────────────────────────────────────
+INSTALL_DIR="${REFLECT_HOME:-$HOME/.reflect-cli}"
 BIN_DIR="${HOME}/.local/bin"
-mkdir -p "$BIN_DIR"
-ln -sf "$SCRIPT_DIR/reflect" "$BIN_DIR/reflect"
-echo "CLI installed: $BIN_DIR/reflect"
+REPO="codeyogi911/reflect"
 
-# ── Skill: install into target repo ──────────────────────────────────
-# If run from within a git repo, install the skill there.
-# Otherwise install into the reflect repo itself.
-TARGET_REPO="${1:-$(git rev-parse --show-toplevel 2>/dev/null || echo "$SCRIPT_DIR")}"
+# ── Resolve latest version ────────────���────────────────────────────
+echo "Fetching latest version..."
+VERSION=$(curl -fsSL -o /dev/null -w '%{redirect_url}' \
+    "https://github.com/${REPO}/releases/latest" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
 
-SKILL_SRC="$SCRIPT_DIR/skill/SKILL.md"
-SKILL_DST="$TARGET_REPO/.claude/skills/reflect"
-
-mkdir -p "$SKILL_DST"
-cp "$SKILL_SRC" "$SKILL_DST/SKILL.md"
-
-# Copy hooks if they exist
-HOOKS_DIR="$SCRIPT_DIR/hooks"
-if [ -d "$HOOKS_DIR" ]; then
-    rm -rf "$SKILL_DST/hooks"
-    cp -R "$HOOKS_DIR" "$SKILL_DST/hooks"
+if [ -z "$VERSION" ]; then
+    echo "Error: could not resolve latest version." >&2
+    echo "Check https://github.com/${REPO}/releases" >&2
+    exit 1
 fi
 
-echo "Skill installed: $SKILL_DST/SKILL.md"
+TARBALL_URL="https://github.com/${REPO}/releases/download/${VERSION}/reflect-cli-${VERSION}.tar.gz"
 
-# ── Summary ──────────────────────────────────────────────────────────
-echo ""
-echo "Make sure $BIN_DIR is on your PATH."
-echo "Run 'reflect init' in any git repo to get started."
+# ── Download and extract ────────────���──────────────────────────────
+echo "Installing reflect ${VERSION}..."
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+curl -fsSL "$TARBALL_URL" -o "$TMP/reflect-cli.tar.gz"
+tar -xzf "$TMP/reflect-cli.tar.gz" -C "$TMP"
+
+# ── Install ──────────��─────────────────────────────────────────────
+rm -rf "$INSTALL_DIR"
+mv "$TMP/reflect-cli" "$INSTALL_DIR"
+chmod +x "$INSTALL_DIR/reflect"
+
+# ── Symlink CLI ───────��────────────────────────────────────────────
+mkdir -p "$BIN_DIR"
+ln -sf "$INSTALL_DIR/reflect" "$BIN_DIR/reflect"
+
+# ── Check PATH ��─────────────────────────���──────────────────────────
+if ! echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
+    echo ""
+    echo "Add to your shell profile:"
+    echo "  export PATH=\"$BIN_DIR:\$PATH\""
+    echo ""
+fi
+
+echo "Done — reflect ${VERSION}. Run 'reflect init' in any git repo."
