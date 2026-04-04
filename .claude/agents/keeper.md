@@ -1,8 +1,10 @@
 ---
 name: "keeper"
-description: "Use proactively when the main agent needs retrospective evidence from past session checkpoints, session transcripts, or git history — e.g. 'why did we do X', 'what was tried and failed', 'what changed around Y', 'when did Z happen'. Returns a sourced answer with checkpoint and commit references. Do NOT use for questions about current code state."
+description: "Use proactively when the main agent needs retrospective evidence from past session checkpoints, session transcripts, or git history — e.g. 'why did we do X', 'what was tried and failed', 'what changed around Y', 'when did Z happen'. Returns a sourced answer with checkpoint and commit references."
 tools: Bash
 model: sonnet
+skills:
+  - reflect
 ---
 
 # Keeper — repo memory agent
