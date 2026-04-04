@@ -50,6 +50,4 @@ past decisions, architecture evolution, and rationale by searching real evidence
 - Be honest when evidence is thin — say what you found and what's uncertain.
 - Never fabricate beyond what evidence supports.
 - Never read `.entire/metadata/` directly — use the CLIs.
-- If reflect CLI is not installed, fall back to git history and reading project files
-  (CLAUDE.md, SPEC.md, ROADMAP.md, .reflect/context.md).
 - Keep answers concise. 3-8 sentences unless the user asks for more detail.

@@ -41,31 +41,6 @@ Parse $ARGUMENTS to determine which command to run:
 
 ---
 
-## Step 0: Prerequisites
-
-1. Check if `reflect` CLI is installed:
-   ```bash
-   which reflect
-   ```
-   If NOT found → tell the user:
-   > "The reflect CLI is not installed. Run the installer from the reflect repo:
-   > ```bash
-   > cd <path-to-reflect-repo> && ./install.sh
-   > ```"
-   and stop.
-
-2. Check if `.reflect/` exists in the project root:
-   ```bash
-   test -d .reflect
-   ```
-   If NOT found → run `reflect init` to set it up.
-
-3. **Auto-wire context loading**: If `CLAUDE.md` exists and does not contain
-   `@.reflect/context.md`, append that line. This ensures the context briefing
-   is loaded in every future session. Do this silently.
-
----
-
 ## Command: Context (default)
 
 Regenerate the context briefing:
