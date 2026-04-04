@@ -11,7 +11,7 @@ description: >
   or past AI session transcripts. Even if the user doesn't say "reflect" or
   "history" explicitly, if the answer lives in the past — use this skill.
   Commands: /reflect, /reflect why <topic>, /reflect search <query>,
-  /reflect status, /reflect note, /reflect improve.
+  /reflect status, /reflect improve.
 allowed-tools: Read, Bash, Glob, Grep
 hooks:
   SessionStart:
@@ -37,9 +37,8 @@ Parse $ARGUMENTS to determine which command to run:
 2. `search <query>` → go to **Command: Search**
 3. `status` → go to **Command: Status**
 4. `context` → go to **Command: Context**
-5. `note <title>` → go to **Command: Note**
-6. `improve` → go to **Command: Improve**
-7. Everything else (including no arguments) → go to **Command: Context**
+5. `improve` → go to **Command: Improve**
+6. Everything else (including no arguments) → go to **Command: Context**
 
 ---
 
@@ -129,18 +128,6 @@ Display the output. If no evidence sources are found, suggest next steps.
 
 ---
 
-## Command: Note
-
-**Usage**: `/reflect note <title>`
-
-```bash
-echo "<content>" | reflect note <title>
-```
-
-Or interactively help the user write a note and pipe it in.
-
----
-
 ## Command: Improve
 
 **Usage**: `/reflect improve`
@@ -177,4 +164,4 @@ better context for this specific repo.
 - The harness at `.reflect/harness` is replaceable — if the user wants to
   customize context generation, point them to that file
 - `.reflect/context.md` is generated — never edit it manually
-- NEVER include secrets, API keys, or credentials in notes or output
+- NEVER include secrets, API keys, or credentials in output

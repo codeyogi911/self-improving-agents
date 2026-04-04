@@ -1,8 +1,7 @@
 """reflect search — grep across all evidence sources."""
 
 import sys
-from .sources import has_entire, has_git, get_entire_checkpoints, get_notes, run
-from pathlib import Path
+from .sources import has_entire, has_git, get_entire_checkpoints, run
 
 
 def cmd_search(args):
@@ -46,20 +45,6 @@ def cmd_search(args):
                 print(f"- {line}")
             print()
             found += len(lines)
-
-    # Search notes
-    notes = get_notes(Path(".reflect/notes"))
-    matching = [n for n in notes if query_lower in n["content"].lower() or query_lower in n["name"].lower()]
-    if matching:
-        print(f"## Notes ({len(matching)} matches)\n")
-        for note in matching:
-            # Show matching line
-            for line in note["content"].split("\n"):
-                if query_lower in line.lower():
-                    print(f"- **{note['name']}**: {line.strip()[:120]}")
-                    break
-        print()
-        found += len(matching)
 
     if found == 0:
         print(f"No matches for '{query}'.")

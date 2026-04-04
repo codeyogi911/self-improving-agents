@@ -49,6 +49,7 @@ def get_recent_commits(limit=15):
         return []
     return raw.split("\n")
 
+
 def get_checkpoint_summary(commit_sha, generate=True):
     """Get Entire's AI summary for a commit's checkpoint.
 
@@ -192,17 +193,6 @@ def _parse_checkpoint_output(raw):
         i += 1
 
     return result
-
-def get_notes(notes_dir):
-    """Read manual notes from .reflect/notes/."""
-    notes = []
-    if not notes_dir.exists():
-        return notes
-    for f in sorted(notes_dir.glob("*.md")):
-        content = f.read_text().strip()
-        if content:
-            notes.append({"name": f.stem, "content": content})
-    return notes
 
 # ---------------------------------------------------------------------------
 # Section builders — powered by AI summaries
@@ -376,29 +366,6 @@ def build_hot_areas(summaries, max_lines=8):
     return lines
 
 
-def build_notes(notes_dir, max_lines=15):
-    """Build Notes section from .reflect/notes/."""
-    notes = get_notes(notes_dir)
-    if not notes:
-        return []
-    lines = ["## Notes"]
-    remaining = max_lines - 1
-    for note in notes:
-        if remaining <= 0:
-            break
-        lines.append(f"### {note['name']}")
-        remaining -= 1
-        content_lines = note["content"].split("\n")
-        for cl in content_lines[:min(8, remaining)]:
-            lines.append(cl)
-            remaining -= 1
-        if len(content_lines) > 8:
-            lines.append(f"_...({len(content_lines) - 8} more lines)_")
-            remaining -= 1
-    lines.append("")
-    return lines
-
-
 STOPWORDS = frozenset(
     "a an the is are was were be been being have has had do does did will would "
     "shall should may might can could of in to for on with at by from as into "
@@ -462,7 +429,7 @@ def _read_config(reflect_dir):
 
 
 def generate_context(max_lines=150):
-    """Generate semantic context from Entire AI summaries + git + notes."""
+    """Generate semantic context from Entire AI summaries + git."""
     reflect_dir = Path(".reflect")
     latest_checkpoint_id = None
     latest_git_sha = None
@@ -495,6 +462,7 @@ def generate_context(max_lines=150):
             if len(summaries) >= 10:
                 break
 
+
     total_sessions = len(summaries)
 
     # --- Assemble context with priority-based line budget ---
@@ -516,7 +484,6 @@ def generate_context(max_lines=150):
         lambda: build_learnings(summaries),
         lambda: build_friction(summaries),
         lambda: build_open_items(summaries),
-        lambda: build_notes(reflect_dir / "notes"),
     ]
 
     used_lines = 4  # header

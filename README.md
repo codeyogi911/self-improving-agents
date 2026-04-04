@@ -67,9 +67,8 @@ Evidence Sources                     reflect
 │  Git history            │────────>│   Reads on demand.   │
 │  (commits, diffs, blame)│         │   No intermediate    │
 │                         │         │   storage.           │
-│  Manual notes           │────────>│                      │
-│  (.reflect/notes/)      │         └──────────┬───────────┘
-└─────────────────────────┘                    │
+└─────────────────────────┘         └──────────┬───────────┘
+                                               │
                                          context.md
                                                │
                                          CLAUDE.md
@@ -140,7 +139,6 @@ reflect search "JWT bug"             # grep across all sources
 ```bash
 reflect init                     # set up .reflect/ in current repo
 reflect status                   # show available evidence sources
-reflect note "why we chose postgres" # add a manual note
 ```
 
 ### Claude Code skill
@@ -177,7 +175,7 @@ Reads Entire CLI + git, ranks by recency, extracts signals (corrections, decisio
 Replace `.reflect/harness` with any script that follows the contract:
 
 ```
-reads: Entire CLI + git + notes (on demand)
+reads: Entire CLI + git (on demand)
 writes: context to stdout
 flags: --max-lines, --format
 ```
@@ -210,8 +208,7 @@ The passive path is a pre-computed summary — good enough for orientation. The 
 ├── harness             # the replaceable context-generation script
 ├── context.md          # generated briefing (gitignored)
 ├── config.yaml         # optional settings
-├── .last_run           # freshness state (gitignored)
-└── notes/              # manual annotations
+└── .last_run           # freshness state (gitignored)
 ```
 
 Evidence lives in Entire and git — reflect just reads it. No sessions/, no decisions/, no insights/.
@@ -229,7 +226,10 @@ Partially. Git history is always available, so you get commit messages and file 
 No. It only writes to `.reflect/` and auto-wires `@.reflect/context.md` into `CLAUDE.md` on first run.
 
 **What about `.reflect/` in git?**
-Commit: `harness`, `config.yaml`, `notes/`. Gitignore: `context.md`, `.last_run`.
+Commit: `harness`, `config.yaml`. Gitignore: `context.md`, `.last_run`.
+
+**I used `.reflect/notes/` in an older version — what now?**
+Reflect no longer reads that folder. Move anything you still need into your normal project docs (README, ADRs, etc.) or rely on Entire session evidence and `reflect why`.
 
 **Does this work across team members?**
 Not yet. Session history comes from Entire on the local machine. If two developers both use Entire in the same repo, they each see only their own sessions. Team-scale memory is a future goal, not a current capability.

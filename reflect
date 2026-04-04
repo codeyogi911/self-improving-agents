@@ -18,8 +18,9 @@ from lib.context import cmd_context
 from lib.why import cmd_why
 from lib.search import cmd_search
 from lib.status import cmd_status
-from lib.note import cmd_note
 from lib.improve import cmd_improve
+from lib.sessions import cmd_sessions
+from lib.timeline import cmd_timeline
 
 
 def main():
@@ -37,8 +38,10 @@ def main():
     ctx.add_argument("--max-lines", type=int, default=None, help="Line budget override")
 
     # reflect why
-    why = subparsers.add_parser("why", help="Fetch raw evidence for a file or topic")
+    why = subparsers.add_parser("why", help="Answer questions about project history")
     why.add_argument("query", nargs="+", help="File path or topic to search for")
+    why.add_argument("--raw", action="store_true", help="Dump raw evidence without synthesis")
+    why.add_argument("--verbose", "-v", action="store_true", help="Show maker-checker progress and raw evidence")
 
     # reflect search
     search = subparsers.add_parser("search", help="Grep across all evidence sources")
@@ -47,9 +50,15 @@ def main():
     # reflect status
     subparsers.add_parser("status", help="Show evidence source availability")
 
-    # reflect note
-    note = subparsers.add_parser("note", help="Add a manual note")
-    note.add_argument("title", nargs="+", help="Note title")
+    # reflect sessions
+    sess = subparsers.add_parser("sessions", help="List and inspect Entire CLI sessions")
+    sess.add_argument("session_id", nargs="?", default=None, help="Session ID for detail view")
+    sess.add_argument("--limit", type=int, default=15, help="Number of sessions to show (default: 15)")
+
+    # reflect timeline
+    tl = subparsers.add_parser("timeline", help="Date-grouped view of sessions and checkpoints")
+    tl.add_argument("--days", type=int, default=7, help="Number of days to show (default: 7)")
+    tl.add_argument("--json", action="store_true", help="Output as JSON")
 
     # reflect improve
     subparsers.add_parser("improve", help="Analyze harness effectiveness, suggest changes")
@@ -66,7 +75,8 @@ def main():
         "why": cmd_why,
         "search": cmd_search,
         "status": cmd_status,
-        "note": cmd_note,
+        "sessions": cmd_sessions,
+        "timeline": cmd_timeline,
         "improve": cmd_improve,
     }
 

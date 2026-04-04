@@ -103,13 +103,14 @@
     {
       "id": "self-pitfall-007",
       "type": "debugging",
-      "title": "Diagnose why context.md has no Notes section despite notes existing",
-      "prompt": "A user has several .md files in .reflect/notes/ but their generated context.md doesn't include a Notes section at all. The `build_notes()` function in harness/default.py seems correct — it reads and formats notes properly. Running `reflect status` confirms notes are detected. What is causing the Notes section to be absent from the generated context? Explain the root cause and suggest a fix.",
+      "title": "Diagnose why context.md omits Friction despite summaries containing friction",
+      "prompt": "A user's Entire session summaries clearly include friction / gotcha signals (visible in `entire explain` output), but the generated `context.md` has a Learnings section and stops there — no `## Friction & Gotchas` section at all. `build_friction()` in harness/default.py looks correct when called in isolation. What is causing the Friction section to be skipped? Explain the root cause and suggest a fix.",
       "ground_truth_signals": [
         "max_lines",
         "used_lines",
         "priority order",
-        "build_notes",
+        "build_learnings",
+        "build_friction",
         "section dropped",
         "line budget"
       ],
@@ -121,7 +122,7 @@
       "id": "self-pitfall-008",
       "type": "why_query",
       "title": "Why did the project pivot from stored artifacts to zero-storage harness",
-      "prompt": "The .reflect/ directory used to contain sessions/, decisions/, insights/, and an index.md — structured artifacts stored in git. The current v4 architecture has none of that: just a harness script, config.yaml, notes/, and generated files. Why was the stored-artifact approach abandoned? What influenced the pivot to zero-storage, on-demand evidence reading? Reference the specific research or design rationale that drove this change.",
+      "prompt": "The .reflect/ directory used to contain sessions/, decisions/, insights/, and an index.md — structured artifacts stored in git. The current v4 architecture has none of that: just a harness script, config.yaml, and generated files. Why was the stored-artifact approach abandoned? What influenced the pivot to zero-storage, on-demand evidence reading? Reference the specific research or design rationale that drove this change.",
       "ground_truth_signals": [
         "zero storage",
         "replaceable harness",

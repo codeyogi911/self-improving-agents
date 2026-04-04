@@ -13,7 +13,6 @@ def cmd_init(args):
 
     if not already_initialized:
         reflect_dir.mkdir(exist_ok=True)
-        (reflect_dir / "notes").mkdir(exist_ok=True)
 
         # Copy default harness
         harness_src = Path(__file__).parent.parent / "harness" / "default.py"

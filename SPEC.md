@@ -27,9 +27,7 @@ repo-owned interface for AI coding agent memory.
 ├── harness             # Executable script that generates context.md (REQUIRED)
 ├── context.md          # Generated briefing for agent consumption (GENERATED)
 ├── config.yaml         # Optional configuration
-├── .last_run           # Freshness state (GENERATED, gitignored)
-└── notes/              # Manual annotations (optional)
-    └── <slug>.md
+└── .last_run           # Freshness state (GENERATED, gitignored)
 ```
 
 ---
@@ -50,7 +48,6 @@ exit:   0 on success, non-zero on failure
 **Reads from** (at runtime, not from stored files):
 - Entire CLI commands (`entire explain`, `entire status`)
 - Git commands (`git log`, `git diff`, `git blame`)
-- `.reflect/notes/*.md`
 
 **Writes**:
 - Context to stdout
@@ -106,16 +103,15 @@ to regenerate context.md.
 
 ## 7. Git Conventions
 
-**Commit**: `.reflect/harness`, `.reflect/config.yaml`, `.reflect/notes/`
+**Commit**: `.reflect/harness`, `.reflect/config.yaml`
 **Gitignore**: `.reflect/context.md`, `.reflect/.last_run`
 
 ---
 
 ## 8. Security
 
-- Never store credentials, API keys, or secrets in notes or context output.
+- Never store credentials, API keys, or secrets in context output.
 - The harness should not log sensitive data from session transcripts.
-- Notes are human-authored — review before committing.
 
 ---
 

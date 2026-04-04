@@ -9,7 +9,7 @@ Repo-owned memory for AI coding agents. Reads raw evidence from Entire CLI sessi
 ## Structure
 
 - `reflect` — CLI entry point (Python)
-- `lib/` — CLI modules (sources, context, init, why, search, status, note)
+- `lib/` — CLI modules (sources, context, init, why, search, status)
 - `harness/default.py` — default harness script (reads Entire + git, writes context)
 - `skill/SKILL.md` — skill source (dev copy; install copies to `.claude/skills/reflect/`)
 - `SPEC.md` — specification for `.reflect/` directory format

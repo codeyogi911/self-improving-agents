@@ -57,7 +57,6 @@ When reflect adds adapters for PRs, CI logs, Slack threads — trust matters:
 | Entire session (human-in-the-loop) | verified |
 | Git commits | inferred |
 | PR descriptions | inferred |
-| Manual notes | verified |
 
 Trust boundaries prevent low-quality evidence from flowing into instruction
 files. Deferred until multi-source adapters exist.
