@@ -14,6 +14,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 from lib.init import cmd_init, cmd_upgrade
+from lib.version import __version__
 from lib.context import cmd_context
 from lib.search import cmd_search
 from lib.status import cmd_status
@@ -27,6 +28,12 @@ def main():
     parser = argparse.ArgumentParser(
         prog="reflect",
         description="Repo-owned memory for AI coding agents.",
+    )
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     subparsers = parser.add_subparsers(dest="command")
 
