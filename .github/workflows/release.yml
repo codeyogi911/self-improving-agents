@@ -21,6 +21,7 @@ jobs:
           cp -r lib dist/reflect-cli/
           cp -r skill dist/reflect-cli/
           cp -r hooks dist/reflect-cli/
+          cp -r templates dist/reflect-cli/
           tar -czf "dist/reflect-cli-${VERSION}.tar.gz" -C dist reflect-cli
 
       - name: Create GitHub Release

@@ -7,38 +7,6 @@ import sys
 from pathlib import Path
 
 
-DEFAULT_FORMAT_YAML = """\
-# reflect format configuration
-# Sections define what the context briefing contains.
-# Edit section names and purposes to customize for your project.
-# The subagent fills each section from session evidence + git history.
-
-sections:
-  - name: Key Decisions & Rationale
-    purpose: why things are the way they are, not what they are
-    max_bullets: 8
-    recency: 30d
-
-  - name: Gotchas & Friction
-    purpose: things that burned time or surprised the agent
-    max_bullets: 6
-    recency: 14d
-
-  - name: Incomplete or Abandoned Work
-    purpose: things that were started but not finished, or reverted — context, not instructions
-    max_bullets: 5
-    recency: 7d
-
-citations: required
-max_lines: 150
-"""
-
-DEFAULT_CONFIG_YAML = """\
-# reflect configuration
-max_lines: 150
-session_start: auto
-"""
-
 ENTIRE_INSTALL_URL = "https://entire.io/install.sh"
 
 
@@ -123,7 +91,7 @@ def cmd_init(args):
         harness = reflect_dir / "harness"
         format_file = reflect_dir / "format.yaml"
         if harness.exists() and not format_file.exists():
-            format_file.write_text(DEFAULT_FORMAT_YAML)
+            shutil.copy2(_template_path("format.yaml"), format_file)
             harness.rename(reflect_dir / "harness.bak")
             print("Migrated: created format.yaml, backed up harness → harness.bak")
         elif format_file.exists():
@@ -133,15 +101,15 @@ def cmd_init(args):
     if not already_initialized:
         reflect_dir.mkdir(exist_ok=True)
 
-        # Write default format.yaml
+        # Copy default format.yaml from template
         format_file = reflect_dir / "format.yaml"
         if not format_file.exists():
-            format_file.write_text(DEFAULT_FORMAT_YAML)
+            shutil.copy2(_template_path("format.yaml"), format_file)
 
-        # Write default config
+        # Copy default config from template
         config = reflect_dir / "config.yaml"
         if not config.exists():
-            config.write_text(DEFAULT_CONFIG_YAML)
+            shutil.copy2(_template_path("config.yaml"), config)
 
     # --- Step 3: Install skill + hooks ---
     _install_skill()
@@ -162,6 +130,11 @@ def cmd_init(args):
 def _reflect_repo_root():
     """Find the reflect repo root (resolving symlinks from ~/.local/bin)."""
     return Path(os.path.realpath(__file__)).parent.parent
+
+
+def _template_path(name):
+    """Return path to a template file shipped with reflect."""
+    return _reflect_repo_root() / "templates" / name
 
 
 def _install_skill():
