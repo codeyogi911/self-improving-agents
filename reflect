@@ -43,7 +43,16 @@ def main():
 
     # reflect search
     search = subparsers.add_parser("search", help="Grep across all evidence sources")
-    search.add_argument("query", nargs="+", help="Search query")
+    search.add_argument(
+        "query",
+        nargs="+",
+        help="Search query (words are OR'd unless --phrase)",
+    )
+    search.add_argument(
+        "--phrase",
+        action="store_true",
+        help="Treat the full query as one literal phrase (no word splitting)",
+    )
 
     # reflect status
     subparsers.add_parser("status", help="Show evidence source availability")
