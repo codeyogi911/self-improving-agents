@@ -171,15 +171,29 @@ def _install_skill():
     print(f"Skill installed: {skill_dst}/SKILL.md")
 
 
+INSTALL_URL = "https://raw.githubusercontent.com/codeyogi911/reflect/main/install.sh"
+
+
 def cmd_upgrade(args):
-    """Upgrade .reflect/ to latest templates, skill, and agents."""
+    """Upgrade reflect CLI, templates, skill, and agents."""
+    # --- Step 1: Upgrade CLI itself ---
+    print("Upgrading reflect CLI...")
+    result = subprocess.run(
+        ["sh", "-c", f"curl -fsSL {INSTALL_URL} | bash"],
+        timeout=120,
+    )
+    if result.returncode != 0:
+        print("CLI upgrade failed. Continuing with local updates...", file=sys.stderr)
+    else:
+        print()
+
     reflect_dir = Path(".reflect")
 
     if not reflect_dir.exists():
         print("No .reflect/ directory found. Run `reflect init` first.", file=sys.stderr)
         return 1
 
-    # --- format.yaml ---
+    # --- Step 2: format.yaml ---
     format_file = reflect_dir / "format.yaml"
     template = _template_path("format.yaml")
     if not template.exists():
@@ -207,7 +221,7 @@ def cmd_upgrade(args):
         shutil.copy2(config_template, config_file)
         print("Added config.yaml from template.")
 
-    # --- skill + hooks + agents ---
+    # --- Step 3: skill + hooks + agents ---
     _install_skill()
 
     print("Upgrade complete.")
