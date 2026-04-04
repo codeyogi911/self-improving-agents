@@ -138,7 +138,7 @@ def _template_path(name):
 
 
 def _install_skill():
-    """Copy skill/SKILL.md, hooks/, and agents/ into .claude/."""
+    """Copy skill/SKILL.md, hooks/, and agents/ into supported agent dirs."""
     repo_root = _reflect_repo_root()
     skill_src = repo_root / "skill" / "SKILL.md"
     hooks_src = repo_root / "hooks"
@@ -156,7 +156,9 @@ def _install_skill():
     # Copy hooks directory
     hooks_dst = skill_dst / "hooks"
     if hooks_src.is_dir():
-        if hooks_dst.exists():
+        if hooks_dst.is_symlink():
+            hooks_dst.unlink()
+        elif hooks_dst.exists():
             shutil.rmtree(hooks_dst)
         shutil.copytree(hooks_src, hooks_dst)
 
@@ -164,31 +166,26 @@ def _install_skill():
     if agents_src.is_dir():
         agents_dst = Path(".claude") / "agents"
         agents_dst.mkdir(parents=True, exist_ok=True)
-        manifest = agents_dst / ".reflect-agents"
 
-        # Read previous manifest to find stale agents
-        # Include known legacy names for bootstrap (before manifest existed)
-        LEGACY_AGENTS = {"reflect-query.md"}
-        old_agents = LEGACY_AGENTS.copy()
-        if manifest.exists():
-            old_agents |= set(manifest.read_text().splitlines())
-
-        # Install current agents
-        new_agents = set()
-        for agent_file in agents_src.glob("*.md"):
-            shutil.copy2(agent_file, agents_dst / agent_file.name)
-            new_agents.add(agent_file.name)
-
-        # Remove agents that reflect previously installed but no longer ships
-        for stale in old_agents - new_agents:
+        # Clean up known legacy agents
+        for stale in ("reflect-query.md", ".reflect-agents"):
             stale_path = agents_dst / stale
             if stale_path.exists():
                 stale_path.unlink()
-                print(f"Removed stale agent: {stale}")
 
-        # Write updated manifest
-        manifest.write_text("\n".join(sorted(new_agents)) + "\n")
+        for agent_file in agents_src.glob("*.md"):
+            shutil.copy2(agent_file, agents_dst / agent_file.name)
         print(f"Agent installed: .claude/agents/")
+
+        # If Cursor is already configured for the repo, install the same agents
+        # into Cursor's project-local agent directory as well.
+        cursor_dir = Path(".cursor")
+        if cursor_dir.is_dir():
+            cursor_agents_dst = cursor_dir / "agents"
+            cursor_agents_dst.mkdir(parents=True, exist_ok=True)
+            for agent_file in agents_src.glob("*.md"):
+                shutil.copy2(agent_file, cursor_agents_dst / agent_file.name)
+            print(f"Agent installed: {cursor_agents_dst}/")
 
     print(f"Skill installed: {skill_dst}/SKILL.md")
 

@@ -10,8 +10,8 @@ description: >
   repo"), and any question that is best answered by consulting git history
   or past AI session transcripts. Even if the user doesn't say "reflect" or
   "history" explicitly, if the answer lives in the past — use this skill.
-  Commands: /reflect, /reflect why <topic>, /reflect search <query>,
-  /reflect status, /reflect improve.
+  Commands: /reflect, /reflect search <query>, /reflect status,
+  /reflect sessions [session_id], /reflect timeline, /reflect improve.
 allowed-tools: Read, Bash, Glob, Grep
 hooks:
   SessionStart:
@@ -20,7 +20,7 @@ hooks:
           command: "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
 metadata:
   author: shashwatjain
-  version: '5.0'
+  version: '5.1'
 ---
 
 # Reflect — Repo-Owned Memory
@@ -33,37 +33,13 @@ briefings with references. Live queries dump raw evidence for you to reason over
 
 Parse $ARGUMENTS to determine which command to run:
 
-1. `why <file-or-topic>` → go to **Command: Why**
-2. `search <query>` → go to **Command: Search**
-3. `status` → go to **Command: Status**
-4. `context` → go to **Command: Context**
-5. `improve` → go to **Command: Improve**
-6. Everything else (including no arguments) → go to **Command: Context**
-
----
-
-## Step 0: Prerequisites
-
-1. Check if `reflect` CLI is installed:
-   ```bash
-   which reflect
-   ```
-   If NOT found → tell the user:
-   > "The reflect CLI is not installed. Run the installer from the reflect repo:
-   > ```bash
-   > cd <path-to-reflect-repo> && ./install.sh
-   > ```"
-   and stop.
-
-2. Check if `.reflect/` exists in the project root:
-   ```bash
-   test -d .reflect
-   ```
-   If NOT found → run `reflect init` to set it up.
-
-3. **Auto-wire context loading**: If `CLAUDE.md` exists and does not contain
-   `@.reflect/context.md`, append that line. This ensures the context briefing
-   is loaded in every future session. Do this silently.
+1. `search <query>` → go to **Command: Search**
+2. `status` → go to **Command: Status**
+3. `context` → go to **Command: Context**
+4. `sessions [session_id]` → go to **Command: Sessions**
+5. `timeline` → go to **Command: Timeline**
+6. `improve` → go to **Command: Improve**
+7. Everything else (including no arguments) → go to **Command: Context**
 
 ---
 
@@ -83,28 +59,6 @@ Report the result to the user: "Context briefing updated."
 
 If the **SessionStart hook** output contains `REFLECT_AUTO_RUN`, run this
 command automatically without user prompting. This keeps the briefing fresh.
-
----
-
-## Command: Why
-
-**Usage**: `/reflect why <file-or-topic>`
-
-This is a live query — it dumps raw evidence for you to reason over.
-
-```bash
-reflect why <file-or-topic>
-```
-
-Read the output and present it as a structured narrative:
-- What sessions touched this file/topic and what happened
-- What decisions were made and why
-- What went wrong (if anything)
-- What the user should know going forward
-
-**You are the intelligence layer.** The CLI gives you raw evidence; you
-construct the "why" story. This is the key design: raw traces outperform
-pre-computed summaries (Meta-Harness, 2026).
 
 ---
 
@@ -132,6 +86,36 @@ Display the output. If no evidence sources are found, suggest next steps.
 
 ---
 
+## Command: Sessions
+
+**Usage**: `/reflect sessions [session_id]`
+
+```bash
+reflect sessions
+reflect sessions <session_id>
+```
+
+Use this after `reflect search` or `reflect timeline` when you need to move
+from broad evidence into a specific Entire session. Without an ID, list recent
+sessions. With an ID or prefix, inspect one session in detail.
+
+---
+
+## Command: Timeline
+
+**Usage**: `/reflect timeline [--days N]`
+
+```bash
+reflect timeline
+reflect timeline --days 14
+```
+
+Use this for time-bounded questions such as "what changed this week" or "what
+happened before the revert". It groups recent sessions and checkpoints by date
+so you can quickly identify the right period before drilling deeper.
+
+---
+
 ## Command: Improve
 
 **Usage**: `/reflect improve`
@@ -143,11 +127,13 @@ reflect improve
 ```
 
 Read the full output. It contains:
+
 1. **Context Quality Issues** — missing citations, truncation, empty sections
 2. **Evidence Gaps** — signals in sessions that didn't make it into context
 3. **Current format.yaml** — the section config to edit
 
 Based on the analysis:
+
 1. Propose specific edits to `.reflect/format.yaml` — add/remove/rename sections,
    adjust max_bullets, change recency windows
 2. Show the user the diff and explain why each change helps
@@ -160,47 +146,56 @@ tunes sections to match what their project actually needs.
 
 ---
 
-## Digging Deeper from context.md
+## Deep History: Timeline, Sessions, Entire, Git
 
-The injected `context.md` is a briefing — a starting point, not the full story.
-When an entry is relevant to your current task, **go deeper before acting on it**.
+Use this short evidence ladder when the answer needs more than the current
+briefing:
 
-Each entry includes a checkpoint reference like `(checkpoint 90e2641946db)`.
-Use the `entire` CLI to explore the raw evidence behind any signal:
+1. Start with `.reflect/context.md` as the briefing. It is the fastest way to
+   get the current narrative and references.
+2. Run `reflect status` if you are not sure whether Entire-backed evidence is
+   available in this repo.
+3. Run `reflect search <query>` for breadth across aggregated evidence when
+   you are still locating the right topic, checkpoint, or session.
+4. Run `reflect timeline` for time-bounded questions, especially when the user
+   cares about a recent window or the order of events.
+5. Run `reflect sessions` after search or timeline when you need to navigate by
+   session, inspect one session, or pick the right ID before going deeper.
+6. Run `entire explain --checkpoint <id>` or `entire explain --commit <sha>`
+   once you already have an ID and need transcript-level depth.
+7. Use `git log` and `git show` as supplements for commit metadata and diffs.
+   Git is useful context, but weak on its own for reconstructing agent
+   reasoning or backtracking.
 
-- **Expand a checkpoint** — get the full session context behind a context.md entry:
-  ```bash
-  entire explain --checkpoint <id>         # detailed view with prompts + files
-  entire explain --checkpoint <id> --full  # full parsed transcript
-  ```
+This ladder is also the default workflow for the **Keeper** agent.
 
-- **Browse recent sessions** — find relevant sessions for a topic:
-  ```bash
-  entire explain                           # list checkpoints on current branch
-  entire explain --session <id>            # filter to a specific session
-  entire sessions list                     # list all sessions across worktrees
-  ```
+---
 
-- **Explain a commit** — understand what happened around a specific change:
-  ```bash
-  entire explain --commit <sha>
-  ```
+## Digging Deeper
 
-**When to dig deeper:**
-- An **Open Work** item matches what you're about to do → read the checkpoint transcript to understand what was tried and where it left off
-- A **Gotcha** or **Abandoned Approach** seems relevant → verify it's still current and understand the full failure context before working around it
-- A **Key Decision** informs your design → read the original discussion to understand constraints that may not fit in a bullet
+`context.md` is a briefing — a starting point, not the full story. When an entry
+is relevant to your current task, spawn the **Keeper** agent to investigate.
+Keeper should read this skill first so it inherits the same command semantics,
+then follow the evidence ladder above: start from `context.md`, use
+`reflect search`, `reflect timeline`, or `reflect sessions` to locate the right
+evidence, and only then drill into raw checkpoints with `entire explain` and
+cross-check with git as needed. Keeper returns a sourced narrative.
 
-**When the briefing is enough:**
-- The entry gives you a clear, actionable fact (e.g., "use os.path.realpath not abspath")
-- You're doing unrelated work and the entry is just background context
+Spawn Keeper when:
+
+- A context.md entry relates to what you're about to change
+- You need to trace a decision across multiple sessions
+- You want to understand what was tried vs what landed
+- An entry about pitfalls or reverted work is a STOP signal — let Keeper
+  verify the constraint before you proceed
 
 ---
 
 ## Rules
 
 - NEVER read `.entire/metadata/` directly — use `reflect` CLI or `entire` CLI
-- When running `/reflect why`, read the raw output and synthesize a narrative
 - To customize context, edit `.reflect/format.yaml` — add project-specific sections
 - `.reflect/context.md` is generated — never edit it manually
 - NEVER include secrets, API keys, or credentials in output
+- **Pitfall/mistake entries are blocking**: if context.md lists a past mistake or revert
+  for the area you're about to change, read the linked evidence BEFORE writing code
