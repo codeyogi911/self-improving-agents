@@ -177,16 +177,6 @@ def _install_skill():
             shutil.copy2(agent_file, agents_dst / agent_file.name)
         print(f"Agent installed: .claude/agents/")
 
-        # If Cursor is already configured for the repo, install the same agents
-        # into Cursor's project-local agent directory as well.
-        cursor_dir = Path(".cursor")
-        if cursor_dir.is_dir():
-            cursor_agents_dst = cursor_dir / "agents"
-            cursor_agents_dst.mkdir(parents=True, exist_ok=True)
-            for agent_file in agents_src.glob("*.md"):
-                shutil.copy2(agent_file, cursor_agents_dst / agent_file.name)
-            print(f"Agent installed: {cursor_agents_dst}/")
-
     print(f"Skill installed: {skill_dst}/SKILL.md")
 
 

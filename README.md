@@ -182,7 +182,7 @@ Run it once per repo. It handles:
 - Enabling Entire for the repo (`entire enable --agent claude-code`)
 - Creating `.reflect/` with default `format.yaml` and `config.yaml`
 - Installing the Claude Code skill to `.claude/skills/reflect/`
-- Installing the Keeper agent to `.claude/agents/` (and `.cursor/agents/` if `.cursor/` exists)
+- Installing the Keeper agent to `.claude/agents/` (Cursor reads the same `.claude/` layout)
 - Wiring `@.reflect/context.md` into `CLAUDE.md`
 
 ### Upgrading
@@ -206,7 +206,7 @@ Run it once per repo. It handles:
 Yes, but you only learn from git history (commit messages, not decision traces). Commands like `sessions` and `timeline` require Entire. The richest lessons — corrections, reasoning, abandoned approaches, friction — come from Entire session transcripts. `reflect init` installs Entire automatically.
 
 **Will it modify my code?**
-No. It writes to `.reflect/`, `.claude/skills/reflect/`, `.claude/agents/` (and `.cursor/agents/` if `.cursor/` exists), and adds an `@.reflect/context.md` reference to `CLAUDE.md` (creating the file if it doesn't exist).
+No. It writes to `.reflect/`, `.claude/skills/reflect/`, `.claude/agents/`, and adds an `@.reflect/context.md` reference to `CLAUDE.md` (creating the file if it doesn't exist).
 
 **Does this work across team members?**
 Not yet. Session history is local. Team-scale learning is a future goal.
