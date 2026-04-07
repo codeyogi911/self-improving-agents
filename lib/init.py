@@ -10,6 +10,12 @@ from pathlib import Path
 ENTIRE_INSTALL_URL = "https://entire.io/install.sh"
 
 
+def _qmd_collection_name():
+    """Derive a unique qmd collection name from the repo directory name."""
+    cwd = Path.cwd()
+    return f"reflect-{cwd.name}"
+
+
 def _run(cmd, timeout=30):
     """Run a command, return (success, stdout)."""
     try:
@@ -130,13 +136,13 @@ def cmd_init(args):
     # --- Step 2c: qmd collection (if qmd available and wiki initialized) ---
     if wiki and shutil.which("qmd"):
         wiki_path = str(wiki_dir.resolve())
-        ok, _ = _run(["qmd", "collection", "add", wiki_path, "--name", "reflect-wiki"])
+        collection_name = _qmd_collection_name()
+        ok, _ = _run(["qmd", "collection", "add", wiki_path, "--name", collection_name])
         if ok:
-            _run(["qmd", "context", "add", "qmd://reflect-wiki", "Project memory: decisions, pitfalls, patterns, open work"])
-            print("qmd collection registered: reflect-wiki")
+            _run(["qmd", "context", "add", f"qmd://{collection_name}", "Project memory: decisions, pitfalls, patterns, open work"])
+            print(f"qmd collection registered: {collection_name}")
         else:
-            # Collection may already exist — not an error
-            print("qmd: collection reflect-wiki already registered (or qmd error)")
+            print(f"qmd: collection {collection_name} already registered (or qmd error)")
 
     # --- Step 3: Install skill + hooks ---
     _install_skill()

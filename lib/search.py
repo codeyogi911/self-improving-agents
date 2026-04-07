@@ -32,9 +32,14 @@ def _has_qmd():
     return shutil.which("qmd") is not None
 
 
+def _qmd_collection_name():
+    """Derive a unique qmd collection name from the repo directory name."""
+    return f"reflect-{Path.cwd().name}"
+
+
 def _search_qmd(query, limit):
     """Search wiki via qmd hybrid search."""
-    cmd = ["qmd", "query", query, "-c", "reflect-wiki", "--json", "--limit", str(limit)]
+    cmd = ["qmd", "query", query, "-c", _qmd_collection_name(), "--json", "--limit", str(limit)]
     raw = run(cmd, timeout=30)
     if not raw:
         return []
