@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.5.3",
+  "checkpoint_id": "f5406daa8b23",
+  "strategy": "manual-commit",
+  "branch": "claude/test-reflect-performance-BDpt3",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "lib/context.py",
+    "lib/ingest.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f5/406daa8b23/0/metadata.json",
+      "transcript": "/f5/406daa8b23/0/full.jsonl",
+      "content_hash": "/f5/406daa8b23/0/content_hash.txt",
+      "prompt": "/f5/406daa8b23/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 323,
+    "cache_creation_tokens": 102206,
+    "cache_read_tokens": 2045688,
+    "output_tokens": 14734,
+    "api_call_count": 49
+  }
+}
