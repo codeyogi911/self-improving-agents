@@ -25,6 +25,51 @@
   "session_metrics": {
     "turn_count": 6
   },
+  "summary": {
+    "intent": "Test the `reflect init` flow from a completely clean state, verifying that qmd embedding works correctly with CPU-only llama.cpp prebuilt binaries and that the new broader triage/dynamic categories/auto qmd reindex logic in `reflect ingest` functions properly.",
+    "outcome": "The `reflect init` flow was successfully validated end-to-end (qmd collection registration, skill install, empty-wiki embed skip). The `reflect ingest` test was aborted mid-run due to slowness; the session ended with committing skill re-syncs and a `.gitignore` update.",
+    "learnings": {
+      "repo": [
+        "node-llama-cpp auto-selects the Vulkan prebuilt over the CPU-only prebuilt when both are installed, then fails to compile from source if the Vulkan SDK is absent — Vulkan package must be explicitly removed to force CPU path.",
+        "`reflect init` correctly skips the seed embed when the wiki is empty (no pages to index), confirming the empty-wiki guard works.",
+        "The qmd skill is installed to `.claude/skills/qmd/` as a dedicated artifact separate from the `reflect` skill.",
+        "Stale qmd collections must be explicitly removed after wiping `.reflect/` state, otherwise they retain broken path references."
+      ],
+      "code": [
+        {
+          "path": ".claude/agents/keeper.md",
+          "finding": "Modified as part of skill re-sync commit."
+        },
+        {
+          "path": ".claude/skills/reflect/SKILL.md",
+          "finding": "Modified as part of skill re-sync commit."
+        },
+        {
+          "path": ".gitignore",
+          "finding": "Updated to exclude transient state (likely `.reflect/wiki.bak` or similar) so the working tree stays clean during test cycles."
+        }
+      ],
+      "workflow": [
+        "Piping long-running CLI output through `tail -30` silently buffers everything until completion, making progress invisible — run commands directly or use a log file for live output.",
+        "When testing from zero, both the `.reflect/` directory and the qmd collection registration must be wiped independently.",
+        "Background ingest processes can stall indefinitely on evidence-gathering steps when the CLI is slow; kill-and-retry is more reliable than waiting.",
+        "The stop-hook git check (`~/.claude/stop-hook-git-check.sh`) fires mid-test and requires uncommitted changes to be resolved before the session can cleanly end."
+      ]
+    },
+    "friction": [
+      "llama.cpp compiled from source for ~11 minutes before the missing prebuilt package was identified as the root cause.",
+      "The Vulkan prebuilt was silently preferred over the CPU prebuilt, causing a confusing compile failure with no Vulkan SDK installed.",
+      "Piping embed output through `tail` masked all progress, making it appear the process was hung when it was actually running.",
+      "A bash wrapper process remained hung after the underlying node process exited, requiring a separate kill step.",
+      "`reflect ingest` stalled on evidence gathering, making the ingest test inconclusive.",
+      "The stop-hook git check interrupted the testing workflow and forced a context switch to commit housekeeping changes."
+    ],
+    "open_items": [
+      "The `reflect ingest --verbose` test with the new broader triage, dynamic categories, and auto qmd reindex was never completed — needs a re-run in a less constrained environment.",
+      "Investigate why `reflect ingest` stalls on evidence gathering when the CLI is slow; may need a timeout or chunking strategy.",
+      "Confirm that `.gitignore` correctly excludes all transient test artifacts (e.g., `wiki.bak`) so future test cycles don't leave dirty working trees."
+    ]
+  },
   "initial_attribution": {
     "calculated_at": "2026-04-12T23:39:21.480190116Z",
     "agent_lines": 103,
