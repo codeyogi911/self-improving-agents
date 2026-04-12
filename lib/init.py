@@ -192,6 +192,11 @@ def cmd_init(args):
             _run(["qmd", "update", "-c", collection_name], timeout=60)
             _run(["qmd", "embed", "-c", collection_name], timeout=300)
 
+        # Install qmd's own skill so agents know how to query it effectively
+        ok, _ = _run(["qmd", "skill", "install", "--yes"], timeout=30)
+        if ok:
+            print("qmd skill installed: .claude/skills/qmd/")
+
     # --- Step 3: Install skill + hooks ---
     _install_skill()
 
