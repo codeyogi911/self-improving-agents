@@ -24,6 +24,39 @@
   "session_metrics": {
     "turn_count": 3
   },
+  "summary": {
+    "intent": "Run three sequential tests (labeled 'Do 123') against a reflect/qmd knowledge base system, validating semantic query functionality on an existing wiki.",
+    "outcome": "Tests were blocked by qmd needing to compile llama.cpp from source on first use; a bug fix to lib/init.py was made and committed while waiting, but the qmd embed process was still running at session end.",
+    "learnings": {
+      "repo": [
+        "reflect init does not run an initial embed when wiki pages already exist — qmd embed must be run manually after init on pre-populated wikis",
+        "qmd spawns its own llama.cpp build per invocation if no prebuilt GPU binary is available, so concurrent qmd processes each trigger duplicate compiles",
+        "entire enable --agent claude-code installs an entire-search.md agent file during reflect init",
+        "A stop hook (stop-hook-git-check.sh) enforces committing and pushing uncommitted changes before stopping"
+      ],
+      "code": [
+        {
+          "path": "lib/init.py",
+          "finding": "Fixed: reflect init was not running an initial qmd embed when the wiki already contained pages; added logic to trigger embedding on init for pre-populated wikis"
+        }
+      ],
+      "workflow": [
+        "Kill duplicate background processes before running a shared build step to avoid parallel compile waste",
+        "qmd update (BM25 index) is instant; qmd embed (vector embeddings) is slow on first run due to llama.cpp compilation",
+        "First-run llama.cpp compilation from source typically takes 5-10 minutes with no prebuilt binary"
+      ]
+    },
+    "friction": [
+      "qmd compiles llama.cpp from source on first use with no prebuilt GPU binary, blocking all query tests for an estimated 5-10 minutes",
+      "Two concurrent qmd query processes each triggered their own llama.cpp build, doubling compile work before being killed",
+      "reflect init silently skips the initial embed for existing wikis, requiring manual discovery of the gap via a runtime warning"
+    ],
+    "open_items": [
+      "The three tests ('Do 123') were never completed — qmd embed was still running at session end",
+      "Verify the lib/init.py fix correctly triggers qmd embed for pre-populated wikis during reflect init",
+      "Consider adding a prebuilt llama.cpp binary or caching the build artifact to avoid repeated from-source compilation"
+    ]
+  },
   "initial_attribution": {
     "calculated_at": "2026-04-12T23:14:17.632602304Z",
     "agent_lines": 11,
