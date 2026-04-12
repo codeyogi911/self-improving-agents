@@ -1,0 +1,48 @@
+{
+  "cli_version": "0.5.4",
+  "checkpoint_id": "4ecb34b81a12",
+  "session_id": "b2cd0b49-218f-4c92-b3ca-3bd5e85cd306",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-12T23:07:07.949067806Z",
+  "branch": "claude/reflect-knowledge-base-eWubY",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".claude/agents/entire-search.md",
+    ".claude/skills/reflect/SKILL.md",
+    ".claude/skills/reflect/hooks/session-start.sh"
+  ],
+  "agent": "Claude Code",
+  "model": "",
+  "turn_id": "1cee15e13e8d",
+  "token_usage": {
+    "input_tokens": 3267,
+    "cache_creation_tokens": 257513,
+    "cache_read_tokens": 4655040,
+    "output_tokens": 37585,
+    "api_call_count": 57
+  },
+  "session_metrics": {
+    "turn_count": 1
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-12T23:07:07.233292504Z",
+    "agent_lines": 132,
+    "agent_removed": 213,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 132,
+    "total_lines_changed": 345,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
