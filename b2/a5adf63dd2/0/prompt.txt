@@ -1,0 +1,13 @@
+Are we not making use of agentic specific flows:
+Using with AI Agents
+
+QMD's --json and --files output formats are designed for agentic workflows:
+
+# Get structured results for an LLM
+qmd search "authentication" --json -n 10
+
+# List all relevant files above a threshold
+qmd query "error handling" --all --files --min-score 0.4
+
+# Retrieve full document content
+qmd get "docs/api-reference.md" --full

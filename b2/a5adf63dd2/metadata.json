@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.5.4",
+  "checkpoint_id": "b2a5adf63dd2",
+  "strategy": "manual-commit",
+  "branch": "claude/reflect-knowledge-base-eWubY",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "lib/init.py",
+    "lib/search.py",
+    "skill/SKILL.md",
+    "skill/agents/keeper.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/b2/a5adf63dd2/0/metadata.json",
+      "transcript": "/b2/a5adf63dd2/0/full.jsonl",
+      "content_hash": "/b2/a5adf63dd2/0/content_hash.txt",
+      "prompt": "/b2/a5adf63dd2/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 22,
+    "cache_creation_tokens": 16412,
+    "cache_read_tokens": 2970999,
+    "output_tokens": 9713,
+    "api_call_count": 17
+  }
+}
