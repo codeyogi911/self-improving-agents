@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.5.4",
+  "checkpoint_id": "c05fbdaba755",
+  "strategy": "manual-commit",
+  "branch": "claude/audit-sessions-wiki-t5dgt",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".claude/skills/reflect/SKILL.md",
+    ".reflect/wiki/guides/github-releases-curl-installer.md",
+    ".reflect/wiki/guides/qmd-installation-and-setup.md",
+    ".reflect/wiki/index.md",
+    ".reflect/wiki/log.md",
+    ".reflect/wiki/patterns/concurrent-batch-write-optimization.md",
+    ".reflect/wiki/patterns/manifest-based-agent-lifecycle.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/c0/5fbdaba755/0/metadata.json",
+      "transcript": "/c0/5fbdaba755/0/full.jsonl",
+      "content_hash": "/c0/5fbdaba755/0/content_hash.txt",
+      "prompt": "/c0/5fbdaba755/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 99,
+    "cache_creation_tokens": 160275,
+    "cache_read_tokens": 3914295,
+    "output_tokens": 28159,
+    "api_call_count": 70
+  }
+}
