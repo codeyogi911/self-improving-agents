@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.5.4",
+  "checkpoint_id": "8d8b19292e59",
+  "strategy": "manual-commit",
+  "branch": "claude/reflect-knowledge-base-eWubY",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "SPEC.md",
+    "lib/ingest.py",
+    "reflect",
+    "skill/SKILL.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/8d/8b19292e59/0/metadata.json",
+      "transcript": "/8d/8b19292e59/0/full.jsonl",
+      "content_hash": "/8d/8b19292e59/0/content_hash.txt",
+      "prompt": "/8d/8b19292e59/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 34,
+    "cache_creation_tokens": 27616,
+    "cache_read_tokens": 6686049,
+    "output_tokens": 19043,
+    "api_call_count": 24
+  }
+}
