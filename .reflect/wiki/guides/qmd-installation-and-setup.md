@@ -1,7 +1,7 @@
 ---
 created: 2026-04-13
 updated: 2026-04-13
-sources: [checkpoint 4ecb34b81a12, checkpoint b2a5adf63dd2, checkpoint 9c595bc9b42d, checkpoint bdd0e5492e95]
+sources: [checkpoint 4ecb34b81a12, checkpoint b2a5adf63dd2, checkpoint 9c595bc9b42d, checkpoint bdd0e5492e95, commit 28a6f97]
 tags: [qmd, installation, skill-setup, setup]
 status: active
 ---
@@ -12,7 +12,13 @@ qmd is the vector search and semantic indexing backend for reflect's knowledge b
 
 ## Installation Command
 
-Install qmd globally via npm or bun: (checkpoint 4ecb34b81a12)
+The fastest way to install qmd is via curl with the GitHub Releases installer: (commit 28a6f97)
+
+```bash
+curl -fsSL https://github.com/tobilu/qmd/releases/latest/download/install.sh | bash
+```
+
+Alternatively, install globally via npm or bun: (checkpoint 4ecb34b81a12)
 
 ```bash
 npm install -g @tobilu/qmd
@@ -52,6 +58,6 @@ If you completely reset `.reflect/`, stale qmd collections retain broken path re
 
 ## Integration with reflect Workflow
 
-- `reflect init` now calls both `npm install -g @tobilu/qmd` and `qmd skill install --yes` automatically.
+- `reflect init` now calls both the qmd installer (curl, npm, or bun) and `qmd skill install --yes` automatically.
 - After `reflect ingest`, the wiki is re-indexed via qmd update and embed.
 - Agents query qmd directly via the installed skill rather than consuming injected context — this is the v1.0.0 architecture. (checkpoint 4ecb34b81a12)

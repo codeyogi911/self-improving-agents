@@ -38,3 +38,9 @@
 - create open-work/mcp-server-integration.md
 - create open-work/full-test-sequence-validation.md
 - create open-work/llama-cpp-prebuilt-or-caching.md
+
+## [2026-04-13] ingest | 4 page(s) — 3 created, 1 updated, 0 resolved
+- create guides/github-releases-curl-installer.md
+- create patterns/concurrent-batch-write-optimization.md
+- create patterns/manifest-based-agent-lifecycle.md
+- update guides/qmd-installation-and-setup.md
